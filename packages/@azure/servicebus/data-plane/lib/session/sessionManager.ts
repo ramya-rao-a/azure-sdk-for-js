@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { OnSessionMessage, SessionManagerOptions, SessionClient, Callee } from "./messageSession";
+import { OnSessionMessage, SessionManagerOptions, SessionReceiver, Callee } from "./messageSession";
 import { OnError } from "../core/messageReceiver";
 import { ClientEntityContext } from "../clientEntityContext";
 import { getProcessorCount } from "../util/utils";
@@ -138,7 +138,7 @@ export class SessionManager {
           this._maxPendingAcceptSessionsSemaphore.awaitedTaskCount()
         );
 
-        const closeMessageSession = async (messageSession: SessionClient) => {
+        const closeMessageSession = async (messageSession: SessionReceiver) => {
           try {
             await this._maxConcurrentSessionsSemaphore.release();
             log.sessionManager(
@@ -161,7 +161,7 @@ export class SessionManager {
           }
         };
         // Create the MessageSession.
-        const messageSession = await SessionClient.create(this._context, {
+        const messageSession = await SessionReceiver.create(this._context, {
           callee: Callee.sessionManager,
           ...options
         });

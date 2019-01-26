@@ -4,39 +4,14 @@
 import * as Long from "long";
 import * as log from "./log";
 import { ConnectionContext } from "./connectionContext";
-import { MessageSender } from "./core/messageSender";
-import { StreamingReceiver, ReceiveHandler, MessageHandlerOptions } from "./core/streamingReceiver";
-import { BatchingReceiver } from "./core/batchingReceiver";
-import {
-  ServiceBusMessage,
-  SendableMessageInfo,
-  ReceivedMessageInfo,
-  ReceiveMode
-} from "./serviceBusMessage";
+import { ReceivedMessageInfo, ReceiveMode } from "./serviceBusMessage";
 import { Client } from "./client";
-import { ReceiveOptions, OnError, OnMessage } from "./core/messageReceiver";
-import { ScheduleMessage, ListSessionsResponse } from "./core/managementClient";
-import { SessionClient, SessionClientOptions } from "./session/messageSession";
-
-/**
- * Describes the options that can be provided while creating the QueueClient.
- * @interface QueueClientOptions
- */
-export interface QueueClientOptions {
-  /**
-   * @property {number} [receiveMode] The mode in which messages should be received.
-   * Default: ReceiveMode.peekLock
-   */
-  receiveMode?: ReceiveMode;
-}
+import { ListSessionsResponse } from "./core/managementClient";
+import { SessionReceiver, SessionReceiverOptions } from "./session/messageSession";
+import { Sender } from "./sender";
+import { Receiver } from "./receiver";
 
 export class QueueClient extends Client {
-  /**
-   * @property {number} receiveMode The mode in which messages should be received.
-   * Possible values are `ReceiveMode.peekLock` (default) and `ReceiveMode.receiveAndDelete`
-   */
-  receiveMode: ReceiveMode;
-
   /**
    * Instantiates a client pointing to the ServiceBus Queue given by this configuration.
    * This is not meant for the user to call directly.
@@ -45,12 +20,9 @@ export class QueueClient extends Client {
    * @constructor
    * @param name The Queue name.
    * @param context The connection context to create the QueueClient.
-   * @param [options] The QueueClient options.
    */
-  constructor(name: string, context: ConnectionContext, options?: QueueClientOptions) {
+  constructor(name: string, context: ConnectionContext) {
     super(name, context);
-    if (!options) options = {};
-    this.receiveMode = options.receiveMode || ReceiveMode.peekLock;
   }
 
   /**
@@ -116,123 +88,20 @@ export class QueueClient extends Client {
   }
 
   /**
-   * Sends the given message to a ServiceBus Queue.
-   * To send a message to a `session` or `partition` enabled Queue, please set the
-   * `sessionId` property and `partitionKey` properties respectively.
-   *
-   * @param message - Message to send.
-   * @returns Promise<void>
+   * Returns a Sender that can be used to send messages, schedule messages to be sent at a later time
+   * and cancel such scheduled messages.
    */
-  async send(message: SendableMessageInfo): Promise<void> {
-    const sender = MessageSender.create(this._context);
-    return sender.send(message);
+  getSender(): Sender {
+    return new Sender(this._context);
   }
 
   /**
-   * Sends a batch of SendableMessageInfo to the ServiceBus Queue in a single AMQP message.
-   * To send messages to a `session` or `partition` enabled Queue, set the
-   * `sessionId` property and `partitionKey` properties respectively. When doing so, all
-   * messages in the batch should have the same `sessionId` (if using sessions) and the same
-   * `parititionKey` (if using paritions) properties.
-   *
-   * @param messages - An array of SendableMessageInfo objects to be sent in a Batch message.
-   * @return Promise<void>
+   * Returns a Receiver that can be used to receive messages in batches or by registering handlers
+   * @param receiveMode The mode in which messages should be received.
+   * Possible values are `ReceiveMode.peekLock` (default) and `ReceiveMode.receiveAndDelete`
    */
-  async sendBatch(messages: SendableMessageInfo[]): Promise<void> {
-    const sender = MessageSender.create(this._context);
-    return sender.sendBatch(messages);
-  }
-
-  /**
-   * Starts the receiver in streaming mode by establishing an AMQP session and an AMQP receiver
-   * link on the session.
-   *
-   * @param onMessage - Callback for processing each incoming message.
-   * @param onError - Callback for any error that occurs while receiving or processing messages.
-   * @param options - Options to control whether messages should be automatically completed and/or
-   * automatically have their locks renewed.
-   *
-   * @returns ReceiveHandler - An object that provides a mechanism to stop receiving more messages.
-   */
-  receive(onMessage: OnMessage, onError: OnError, options?: MessageHandlerOptions): ReceiveHandler {
-    if (this._context.streamingReceiver && this._context.streamingReceiver.isOpen()) {
-      const rcvr = this._context.streamingReceiver;
-      const msg =
-        `A "${rcvr.receiverType}" receiver with id "${rcvr.name}" has already been ` +
-        `created for the Queue "${this.name}". Another receive() call cannot be made while the ` +
-        `previous one is active. Please stop the previous receive() by calling ` +
-        `"receiveHandler.stop()".`;
-      throw new Error(msg);
-    }
-
-    if (!options) options = {};
-    const rcvOptions: ReceiveOptions = {
-      maxConcurrentCalls: 1,
-      receiveMode: this.receiveMode,
-      autoComplete: options.autoComplete,
-      maxAutoRenewDurationInSeconds: options.maxAutoRenewDurationInSeconds
-    };
-    const sReceiver = StreamingReceiver.create(this._context, rcvOptions);
-    this._context.streamingReceiver = sReceiver;
-    return sReceiver.receive(onMessage, onError);
-  }
-
-  /**
-   * Receives a batch of Message objects from a ServiceBus Queue for a given count and a
-   * given max wait time in seconds, whichever happens first.
-   * @param maxMessageCount      The maximum message count. Must be a value greater than 0.
-   * @param maxWaitTimeInSeconds The maximum wait time in seconds for which the Receiver
-   * should wait to receive the said amount of messages. If not provided, it defaults to 60 seconds.
-   * @param maxMessageWaitTimeoutInSeconds The maximum amount of idle time the Receiver
-   * will wait after creating the link or after receiving a new message. If no messages are received
-   * in that time frame then the batch receive operation ends. It is advised to keep this value at
-   * 10% of the lockDuration value.
-   * - **Default**: `2` seconds.
-   * @returns Promise<ServiceBusMessage[]> A promise that resolves with an array of Message objects.
-   */
-  async receiveBatch(
-    maxMessageCount: number,
-    maxWaitTimeInSeconds?: number,
-    maxMessageWaitTimeoutInSeconds?: number
-  ): Promise<ServiceBusMessage[]> {
-    let bReceiver = this._context.batchingReceiver;
-    if (bReceiver && bReceiver.isOpen() && bReceiver.isReceivingMessages) {
-      const msg =
-        `A "${bReceiver.receiverType}" receiver with id "${bReceiver.name}" has already been ` +
-        `created for the Queue "${
-          this.name
-        }". Another receiveBatch() call cannot be made while the ` +
-        `previous one is active. Please wait for the previous receiveBatch() to complete and ` +
-        `then call receiveBatch() again.`;
-      throw new Error(msg);
-    }
-
-    if (!bReceiver || !bReceiver.isOpen()) {
-      const options: ReceiveOptions = {
-        maxConcurrentCalls: 0,
-        receiveMode: this.receiveMode
-      };
-      this._context.batchingReceiver = bReceiver = BatchingReceiver.create(this._context, options);
-    }
-
-    try {
-      return await bReceiver.receive(
-        maxMessageCount,
-        maxWaitTimeInSeconds,
-        maxMessageWaitTimeoutInSeconds
-      );
-    } catch (err) {
-      log.error(
-        "[%s] Receiver '%s', an error occurred while receiving %d messages for %d " +
-          "max time:\n %O",
-        this._context.namespace.connectionId,
-        bReceiver.name,
-        maxMessageCount,
-        maxWaitTimeInSeconds,
-        err
-      );
-      throw err;
-    }
+  getReceiver(receiveMode?: ReceiveMode): Receiver {
+    return new Receiver(this._context, this.name, receiveMode);
   }
 
   /**
@@ -274,123 +143,43 @@ export class QueueClient extends Client {
   }
 
   /**
-   * Renews the lock on the message. The lock will be renewed based on the setting specified on
-   * the queue.
+   * Fetches the next batch of active messages in the current MessageSession. The first call to
+   * `peek()` fetches the first active message for this client. Each subsequent call fetches the
+   * subsequent message in the entity.
    *
-   * When a message is received in `PeekLock` mode, the message is locked on the server for this
-   * receiver instance for a duration as specified during the Queue/Subscription creation
-   * (LockDuration). If processing of the message requires longer than this duration, the
-   * lock needs to be renewed. For each renewal, it resets the time the message is locked by the
-   * LockDuration set on the Entity.
+   * Unlike a `received` message, `peeked` message will not have lock token associated with it,
+   * and hence it cannot be `Completed/Abandoned/Deferred/Deadlettered/Renewed`. Also, unlike
+   * `receive() | receiveBatch()` this method will also fetch `Deferred` messages, but
+   * **NOT** `Deadlettered` messages.
    *
-   * @param lockTokenOrMessage - Lock token of the message or the message itself.
-   * @returns Promise<Date> - New lock token expiry date and time in UTC format.
+   * It is especially important to keep in mind when attempting to recover deferred messages from
+   * the queue. A message for which the `expiresAtUtc` instant has passed is no longer eligible for
+   * regular retrieval by any other means, even when it's being returned by `peek()`. Returning
+   * these messages is deliberate, since `peek()` is a diagnostics tool reflecting the current
+   * state of the log.
+   *
+   * @param messageCount The number of messages to retrieve. Default value `1`.
+   * @returns Promise<ReceivedMessageInfo[]>
    */
-  async renewLock(lockTokenOrMessage: string | ServiceBusMessage): Promise<Date> {
-    if (this.receiveMode !== ReceiveMode.peekLock) {
-      throw new Error("The operation is only supported in 'PeekLock' receive mode.");
-    }
-    return this._context.managementClient!.renewLock(lockTokenOrMessage);
+  async peekSession(sessionId: string, messageCount?: number): Promise<ReceivedMessageInfo[]> {
+    return this._context.managementClient!.peekMessagesBySession(sessionId, messageCount);
   }
 
   /**
-   * Receives a specific deferred message identified by `sequenceNumber` of the `Message`.
-   * @param sequenceNumber The sequence number of the message that will be received.
-   * @returns Promise<ServiceBusMessage | undefined>
-   * - Returns `Message` identified by sequence number.
-   * - Returns `undefined` if no such message is found.
-   * - Throws an error if the message has not been deferred.
+   * Peeks the desired number of messages in the MessageSession from the specified sequence number.
+   * @param fromSequenceNumber The sequence number from where to read the message.
+   * @param messageCount The number of messages to retrieve. Default value `1`.
+   * @returns Promise<ReceivedMessageInfo[]>
    */
-  async receiveDeferredMessage(sequenceNumber: Long): Promise<ServiceBusMessage | undefined> {
-    if (this.receiveMode !== ReceiveMode.peekLock) {
-      throw new Error("The operation is only supported in 'PeekLock' receive mode.");
-    }
-    return this._context.managementClient!.receiveDeferredMessage(sequenceNumber, this.receiveMode);
-  }
-
-  /**
-   * Receives a list of deferred messages identified by `sequenceNumbers`.
-   * @param sequenceNumbers A list containing the sequence numbers to receive.
-   * @returns Promise<ServiceBusMessage[]>
-   * - Returns a list of messages identified by the given sequenceNumbers.
-   * - Returns an empty list if no messages are found.
-   * - Throws an error if the messages have not been deferred.
-   */
-  async receiveDeferredMessages(sequenceNumbers: Long[]): Promise<ServiceBusMessage[]> {
-    if (this.receiveMode !== ReceiveMode.peekLock) {
-      throw new Error("The operation is only supported in 'PeekLock' receive mode.");
-    }
-    return this._context.managementClient!.receiveDeferredMessages(
-      sequenceNumbers,
-      this.receiveMode
-    );
-  }
-
-  /**
-   * Schedules a message to appear on Service Bus Queue at a later time.
-   *
-   * @param scheduledEnqueueTimeUtc - The UTC time at which the message should be enqueued.
-   * @param message - The message that needs to be scheduled.
-   * @returns Promise<Long> - The sequence number of the message that was
-   * scheduled. Please save the `Long` type as-is in your application. Do not convert it to a
-   * number as that may cause loss of precision, since JS only supports 53 bit numbers.
-   * `Long` type provides methods for mathematical operations.
-   * If you want to save it to a log file, then save the stringifed form
-   * `const result = Long.toString();`. When deserializing it, please use
-   * `Long.fromString("result");`. This will ensure that precision is preserved.
-   */
-  async scheduleMessage(
-    scheduledEnqueueTimeUtc: Date,
-    message: SendableMessageInfo
-  ): Promise<Long> {
-    const scheduleMessages: ScheduleMessage[] = [
-      { message: message, scheduledEnqueueTimeUtc: scheduledEnqueueTimeUtc }
-    ];
-    const result = await this._context.managementClient!.scheduleMessages(scheduleMessages);
-    return result[0];
-  }
-
-  /**
-   * Schedules a message to appear on Service Bus Queue at a later time.
-   *
-   * @param scheduledEnqueueTimeUtc - The UTC time at which the message should be enqueued.
-   * @param messages - Array of Messages that need to be scheduled.
-   * @returns Promise<Long[]> - The sequence numbers of messages that were scheduled. Please
-   * save the `Long` type as-is in your application. Do not convert it to a number as that may
-   * cause loss of precision, since JS only supports 53 bit numbers. `Long` type provides methods
-   * for mathematical operations. If you want to save it to a log file, then save the stringifed
-   * form `const result = Long.toString();`. When deserializing it, please use
-   * `Long.fromString("result");`. This will ensure that precision is preserved.
-   */
-  async scheduleMessages(
-    scheduledEnqueueTimeUtc: Date,
-    messages: SendableMessageInfo[]
-  ): Promise<Long[]> {
-    const scheduleMessages: ScheduleMessage[] = messages.map((message) => {
-      return {
-        message,
-        scheduledEnqueueTimeUtc
-      };
+  async peekSessionBySequenceNumber(
+    sessionId: string,
+    fromSequenceNumber: Long,
+    messageCount?: number
+  ): Promise<ReceivedMessageInfo[]> {
+    return this._context.managementClient!.peekBySequenceNumber(fromSequenceNumber, {
+      sessionId: sessionId,
+      messageCount: messageCount
     });
-    return this._context.managementClient!.scheduleMessages(scheduleMessages);
-  }
-
-  /**
-   * Cancels a message that was scheduled to appear on a ServiceBus Queue.
-   * @param sequenceNumber - The sequence number of the message to be cancelled.
-   * @returns Promise<void>
-   */
-  async cancelScheduledMessage(sequenceNumber: Long): Promise<void> {
-    return this._context.managementClient!.cancelScheduledMessages([sequenceNumber]);
-  }
-
-  /**
-   * Cancels an array of messages that were scheduled to appear on a ServiceBus Queue.
-   * @param sequenceNumbers - An Array of sequence numbers of the message to be cancelled.
-   * @returns Promise<void>
-   */
-  async cancelScheduledMessages(sequenceNumbers: Long[]): Promise<void> {
-    return this._context.managementClient!.cancelScheduledMessages(sequenceNumbers);
   }
 
   /**
@@ -417,11 +206,11 @@ export class QueueClient extends Client {
    * @param options Options to provide sessionId and ReceiveMode for receiving messages from the
    * session enabled Servicebus Queue.
    *
-   * @returns SessionClient An instance of a SessionClient to receive messages from the session.
+   * @returns SessionReceiver An instance of a SessionReceiver to receive messages from the session.
    */
-  async createSessionClient(options?: SessionClientOptions): Promise<SessionClient> {
+  async getSessionReceiver(options?: SessionReceiverOptions): Promise<SessionReceiver> {
     if (!options) options = {};
     this._context.isSessionEnabled = true;
-    return SessionClient.create(this._context, options);
+    return SessionReceiver.create(this._context, options);
   }
 }

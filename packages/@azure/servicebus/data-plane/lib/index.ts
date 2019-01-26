@@ -31,11 +31,15 @@ export {
   DeadLetterOptions,
   ReceiveMode
 } from "./serviceBusMessage";
-export { ReceiveHandler, MessageHandlerOptions } from "./core/streamingReceiver";
+export { MessageHandlerOptions } from "./core/streamingReceiver";
 export { OnError, OnMessage } from "./core/messageReceiver";
-export { SessionClient, OnSessionMessage, SessionClientOptions } from "./session/messageSession";
-export { QueueClientOptions, QueueClient } from "./queueClient";
+export {
+  SessionReceiver,
+  OnSessionMessage,
+  SessionReceiverOptions
+} from "./session/messageSession";
+export { QueueClient } from "./queueClient";
 export { Namespace, NamespaceOptions } from "./namespace";
 export { TopicClient } from "./topicClient";
-export { SubscriptionClient, SubscriptionClientOptions } from "./subscriptionClient";
+export { SubscriptionClient } from "./subscriptionClient";
 export { SQLExpression, CorrelationFilter, RuleDescription } from "./core/managementClient";

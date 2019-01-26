@@ -12,7 +12,7 @@ import {
   QueueClient,
   TopicClient,
   SubscriptionClient,
-  SessionClient,
+  SessionReceiver,
   ServiceBusMessage,
   SendableMessageInfo
 } from "../lib";
@@ -25,12 +25,17 @@ import {
   getReceiverClient,
   ClientType
 } from "./testUtils";
+import { Receiver } from "../lib/receiver";
+import { Sender } from "../lib/sender";
 
 async function testPeekMsgsLength(
-  client: QueueClient | SubscriptionClient | SessionClient,
-  expectedPeekLength: number
+  client: QueueClient | SubscriptionClient,
+  expectedPeekLength: number,
+  useSessions: boolean
 ): Promise<void> {
-  const peekedMsgs = await client.peek(expectedPeekLength + 1);
+  const peekedMsgs = useSessions
+    ? await client.peekSession(testSessionId, expectedPeekLength + 1)
+    : await client.peek(expectedPeekLength + 1);
   should.equal(
     peekedMsgs.length,
     expectedPeekLength,
@@ -43,7 +48,8 @@ let ns: Namespace;
 let senderClient: QueueClient | TopicClient;
 let receiverClient: QueueClient | SubscriptionClient;
 let deadLetterClient: QueueClient | SubscriptionClient;
-let messageSession: SessionClient;
+let sender: Sender;
+let receiver: Receiver | SessionReceiver;
 
 async function beforeEachTest(
   senderType: ClientType,
@@ -79,11 +85,12 @@ async function beforeEachTest(
     );
   }
 
-  if (useSessions) {
-    messageSession = await receiverClient.createSessionClient({
-      sessionId: testSessionId
-    });
-  }
+  sender = senderClient.getSender();
+  receiver = useSessions
+    ? await receiverClient.getSessionReceiver({
+        sessionId: testSessionId
+      })
+    : receiverClient.getReceiver();
 
   const peekedMsgs = await receiverClient.peek();
   const receiverEntityType = receiverClient instanceof QueueClient ? "queue" : "topic";
@@ -96,13 +103,9 @@ async function afterEachTest(): Promise<void> {
   await ns.close();
 }
 
-async function deferMessage(
-  senderClient: QueueClient | TopicClient,
-  receiverClient: QueueClient | SubscriptionClient | SessionClient,
-  testMessages: SendableMessageInfo[]
-): Promise<ServiceBusMessage> {
-  await senderClient.send(testMessages[0]);
-  const receivedMsgs = await receiverClient.receiveBatch(1);
+async function deferMessage(testMessages: SendableMessageInfo[]): Promise<ServiceBusMessage> {
+  await sender.send(testMessages[0]);
+  const receivedMsgs = await receiver.receiveBatch(1);
 
   should.equal(receivedMsgs.length, 1);
   should.equal(receivedMsgs[0].body, testMessages[0].body);
@@ -115,7 +118,7 @@ async function deferMessage(
   const sequenceNumber = receivedMsgs[0].sequenceNumber;
   await receivedMsgs[0].defer();
 
-  const deferredMsgs = await receiverClient.receiveDeferredMessage(sequenceNumber);
+  const deferredMsgs = await receiver.receiveDeferredMessage(sequenceNumber);
   if (!deferredMsgs) {
     throw "No message received for sequence number";
   }
@@ -127,14 +130,14 @@ async function deferMessage(
 }
 
 async function completeDeferredMessage(
-  receiverClient: QueueClient | SubscriptionClient | SessionClient,
   sequenceNumber: Long,
   expectedDeliverCount: number,
-  testMessages: SendableMessageInfo[]
+  testMessages: SendableMessageInfo[],
+  useSessions?: boolean
 ): Promise<void> {
-  await testPeekMsgsLength(receiverClient, 1);
+  await testPeekMsgsLength(receiverClient, 1, !!useSessions);
 
-  const deferredMsg = await receiverClient.receiveDeferredMessage(sequenceNumber);
+  const deferredMsg = await receiver.receiveDeferredMessage(sequenceNumber);
   if (!deferredMsg) {
     throw "No message received for sequence number";
   }
@@ -145,7 +148,7 @@ async function completeDeferredMessage(
 
   await deferredMsg.complete();
 
-  await testPeekMsgsLength(receiverClient, 0);
+  await testPeekMsgsLength(receiverClient, 0, !!useSessions);
 }
 
 describe("Abandon/Defer/Deadletter deferred message", function(): void {
@@ -155,14 +158,13 @@ describe("Abandon/Defer/Deadletter deferred message", function(): void {
 
   async function testAbandon(useSessions?: boolean): Promise<void> {
     const testMessages = useSessions ? testMessagesWithSessions : testSimpleMessages;
-    const currentReceiverClient = useSessions ? messageSession : receiverClient;
-    const deferredMsg = await deferMessage(senderClient, currentReceiverClient, testMessages);
+    const deferredMsg = await deferMessage(testMessages);
     const sequenceNumber = deferredMsg.sequenceNumber;
     if (!sequenceNumber) {
       throw "Sequence Number can not be null";
     }
     await deferredMsg.abandon();
-    await completeDeferredMessage(currentReceiverClient, sequenceNumber, 2, testMessages);
+    await completeDeferredMessage(sequenceNumber, 2, testMessages);
   }
 
   it("Partitioned Queues: Abandoning a deferred message puts it back to the deferred queue.", async function(): Promise<
@@ -245,14 +247,13 @@ describe("Deferring a deferred message puts it back to the deferred queue.", fun
 
   async function testDefer(useSessions?: boolean): Promise<void> {
     const testMessages = useSessions ? testMessagesWithSessions : testSimpleMessages;
-    const currentReceiverClient = useSessions ? messageSession : receiverClient;
-    const deferredMsg = await deferMessage(senderClient, currentReceiverClient, testMessages);
+    const deferredMsg = await deferMessage(testMessages);
     const sequenceNumber = deferredMsg.sequenceNumber;
     if (!sequenceNumber) {
       throw "Sequence Number can not be null";
     }
     await deferredMsg.defer();
-    await completeDeferredMessage(currentReceiverClient, sequenceNumber, 2, testMessages);
+    await completeDeferredMessage(sequenceNumber, 2, testMessages);
   }
 
   it("Partitioned Queues: Deferring a deferred message puts it back to the deferred queue.", async function(): Promise<
@@ -335,14 +336,13 @@ describe("Deadlettering a deferred message moves it to dead letter queue.", func
 
   async function testDeadletter(useSessions?: boolean): Promise<void> {
     const testMessages = useSessions ? testMessagesWithSessions : testSimpleMessages;
-    const currentReceiverClient = useSessions ? messageSession : receiverClient;
-    const deferredMsg = await deferMessage(senderClient, currentReceiverClient, testMessages);
+    const deferredMsg = await deferMessage(testMessages);
 
     await deferredMsg.deadLetter();
 
-    await testPeekMsgsLength(currentReceiverClient, 0);
+    await testPeekMsgsLength(receiverClient, 0, !!useSessions);
 
-    const deadLetterMsgs = await deadLetterClient.receiveBatch(1);
+    const deadLetterMsgs = await deadLetterClient.getReceiver().receiveBatch(1);
 
     should.equal(deadLetterMsgs.length, 1);
     should.equal(deadLetterMsgs[0].body, testMessages[0].body);
@@ -351,7 +351,7 @@ describe("Deadlettering a deferred message moves it to dead letter queue.", func
 
     await deadLetterMsgs[0].complete();
 
-    await testPeekMsgsLength(deadLetterClient, 0);
+    await testPeekMsgsLength(deadLetterClient, 0, false);
   }
 
   it("Partitioned Queues: Deadlettering a deferred message moves it to dead letter queue.", async function(): Promise<

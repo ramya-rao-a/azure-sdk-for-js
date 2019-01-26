@@ -135,6 +135,12 @@ export class MessageReceiver extends LinkEntity {
    */
   maxAutoRenewDurationInSeconds: number;
   /**
+   * @property {number} [maxMessageWaitTimeoutInSeconds] The maximum amount of idle time the
+   * reaceiver will wait ater a message has been received. If no messages are received in that
+   * time frame then the receive operation will end.
+   */
+  maxMessageWaitTimeoutInSeconds?: number;
+  /**
    * @property {boolean} autoRenewLock Should lock renewal happen automatically.
    */
   autoRenewLock: boolean;
@@ -207,6 +213,16 @@ export class MessageReceiver extends LinkEntity {
     NodeJS.Timer | undefined
   >();
   /**
+   * @property {NodeJS.Timer} _newMessageReceivedTimer The new message received timer that keeps
+   * track of time since last message was received.
+   */
+  protected _newMessageReceivedTimer?: NodeJS.Timer;
+  /**
+   * Resets the `_newMessageReceivedTimer` timer when a new message is received.
+   * @ignore
+   */
+  protected resetTimerOnNewMessageReceived: () => void;
+  /**
    * @property {Function} _clearMessageLockRenewTimer Clears the message lock renew timer for a
    * specific messageId.
    * @protected
@@ -228,6 +244,10 @@ export class MessageReceiver extends LinkEntity {
     this.receiveMode = options.receiveMode || ReceiveMode.peekLock;
     this.maxConcurrentCalls =
       options.maxConcurrentCalls != undefined ? options.maxConcurrentCalls : 1;
+    this.maxMessageWaitTimeoutInSeconds = options.maxMessageWaitTimeoutInSeconds;
+    this.resetTimerOnNewMessageReceived = () => {
+      /** */
+    };
     // If explicitly set to false then autoComplete is false else true (default).
     this.autoComplete = options.autoComplete === false ? options.autoComplete : true;
     this.maxAutoRenewDurationInSeconds =
@@ -297,6 +317,7 @@ export class MessageReceiver extends LinkEntity {
     };
 
     this._onAmqpMessage = async (context: EventContext) => {
+      this.resetTimerOnNewMessageReceived();
       const connectionId = this._context.namespace.connectionId;
       const bMessage: ServiceBusMessage = new ServiceBusMessage(
         this._context,
@@ -516,6 +537,9 @@ export class MessageReceiver extends LinkEntity {
           );
         }
       }
+      if (this._newMessageReceivedTimer) {
+        clearTimeout(this._newMessageReceivedTimer);
+      }
     };
 
     this._onSessionError = (context: EventContext) => {
@@ -538,6 +562,9 @@ export class MessageReceiver extends LinkEntity {
           );
           this._onError!(sbError);
         }
+      }
+      if (this._newMessageReceivedTimer) {
+        clearTimeout(this._newMessageReceivedTimer);
       }
     };
 
@@ -742,6 +769,7 @@ export class MessageReceiver extends LinkEntity {
    * @return {Promise<void>} Promise<void>.
    */
   async close(): Promise<void> {
+    if (this._newMessageReceivedTimer) clearTimeout(this._newMessageReceivedTimer);
     if (this._receiver) {
       const receiverLink = this._receiver;
       this._deleteFromCache();

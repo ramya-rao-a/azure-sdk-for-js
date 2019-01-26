@@ -3,25 +3,11 @@
 
 import * as log from "./log";
 import { ConnectionContext } from "./connectionContext";
-import { ReceiveOptions, OnError, OnMessage } from "./core/messageReceiver";
-import { StreamingReceiver, ReceiveHandler, MessageHandlerOptions } from "./core/streamingReceiver";
-import { BatchingReceiver } from "./core/batchingReceiver";
-import { ServiceBusMessage, ReceivedMessageInfo, ReceiveMode } from "./serviceBusMessage";
+import { Receiver } from "./receiver";
+import { ReceivedMessageInfo, ReceiveMode } from "./serviceBusMessage";
 import { Client } from "./client";
 import { CorrelationFilter, RuleDescription, ListSessionsResponse } from "./core/managementClient";
-import { SessionClient, SessionClientOptions } from "./session/messageSession";
-
-/**
- * Describes the options that can be provided while creating the SubscriptionClient.
- * @interface SubscriptionClientOptions
- */
-export interface SubscriptionClientOptions {
-  /**
-   * @property {number} [receiveMode] The mode in which messages should be received.
-   * Possible values are `ReceiveMode.peekLock` (default) and `ReceiveMode.receiveAndDelete`
-   */
-  receiveMode?: ReceiveMode;
-}
+import { SessionReceiver, SessionReceiverOptions } from "./session/messageSession";
 
 export class SubscriptionClient extends Client {
   /**
@@ -36,7 +22,6 @@ export class SubscriptionClient extends Client {
    * @property {number} receiveMode The mode in which messages should be received.
    * Default: ReceiveMode.peekLock
    */
-  receiveMode: ReceiveMode;
 
   /**
    * @property {string} defaultRuleName Name of the default rule on the subscription.
@@ -52,19 +37,12 @@ export class SubscriptionClient extends Client {
    * @param topicPath - The Topic path.
    * @param subscriptionName - The Subscription name.
    * @param context - The connection context to create the SubscriptionClient.
-   * @param [options] - The SubscriptionClient options.
    */
-  constructor(
-    topicPath: string,
-    subscriptionName: string,
-    context: ConnectionContext,
-    options?: SubscriptionClientOptions
-  ) {
+  constructor(topicPath: string, subscriptionName: string, context: ConnectionContext) {
     super(`${topicPath}/Subscriptions/${subscriptionName}`, context);
-    if (!options) options = {};
+
     this.topicPath = topicPath;
     this.subscriptionName = subscriptionName;
-    this.receiveMode = options.receiveMode || ReceiveMode.peekLock;
   }
 
   /**
@@ -95,100 +73,12 @@ export class SubscriptionClient extends Client {
   }
 
   /**
-   * Starts the receiver in a streaming mode by establishing an AMQP session and an AMQP receiver
-   * link on the session.
-   *
-   * @param onMessage - Callback for processing each incoming message.
-   * @param onError - Callback for any error that occurs while receiving or processing messages.
-   * @param options - Options to control whether messages should be automatically completed and/or
-   * automatically have their locks renewed.
-   *
-   * @returns ReceiveHandler - An object that provides a mechanism to stop receiving more messages.
+   * Returns a Receiver that can be used to receive messages in batches or by registering handlers
+   * @param receiveMode The mode in which messages should be received.
+   * Possible values are `ReceiveMode.peekLock` (default) and `ReceiveMode.receiveAndDelete`
    */
-  receive(onMessage: OnMessage, onError: OnError, options?: MessageHandlerOptions): ReceiveHandler {
-    if (
-      !this._context.streamingReceiver ||
-      (this._context.streamingReceiver && !this._context.streamingReceiver.isOpen())
-    ) {
-      if (!options) options = {};
-      const rcvOptions: ReceiveOptions = {
-        maxConcurrentCalls: 1,
-        receiveMode: this.receiveMode,
-        autoComplete: options.autoComplete,
-        maxAutoRenewDurationInSeconds: options.maxAutoRenewDurationInSeconds
-      };
-      const sReceiver = StreamingReceiver.create(this._context, rcvOptions);
-      this._context.streamingReceiver = sReceiver;
-      return sReceiver.receive(onMessage, onError);
-    } else {
-      const rcvr = this._context.streamingReceiver;
-      const msg =
-        `A "${rcvr.receiverType}" receiver with id "${rcvr.name}" has already been ` +
-        `created for the Subscription "${
-          this.name
-        }". Another receive() call cannot be made while ` +
-        `the previous one is active. Please stop the previous receive() by calling ` +
-        `"receiveHandler.stop()".`;
-      throw new Error(msg);
-    }
-  }
-
-  /**
-   * Receives a batch of Message objects from a ServiceBus Subscription for a given count and a
-   * given max wait time in seconds, whichever happens first.
-   * @param maxMessageCount      The maximum message count. Must be a value greater than 0.
-   * @param maxWaitTimeInSeconds The maximum wait time in seconds for which the Receiver
-   * should wait to receive the said amount of messages. If not provided, it defaults to 60 seconds.
-   * @param maxMessageWaitTimeoutInSeconds The maximum amount of idle time the Receiver
-   * will wait after creating the link or after receiving a new message. If no messages are received
-   * in that time frame then the batch receive operation ends. It is advised to keep this value at
-   * 10% of the lockDuration value.
-   * - **Default**: `2` seconds.
-   * @returns Promise<ServiceBusMessage[]> A promise that resolves with an array of Message objects.
-   */
-  async receiveBatch(
-    maxMessageCount: number,
-    maxWaitTimeInSeconds?: number,
-    maxMessageWaitTimeoutInSeconds?: number
-  ): Promise<ServiceBusMessage[]> {
-    let bReceiver = this._context.batchingReceiver;
-    if (bReceiver && bReceiver.isOpen() && bReceiver.isReceivingMessages) {
-      const msg =
-        `A "${bReceiver.receiverType}" receiver with id "${bReceiver.name}" has already been ` +
-        `created for the Subscription "${
-          this.name
-        }". Another receiveBatch() call cannot be made while the ` +
-        `previous one is active. Please wait for the previous receiveBatch() to complete and ` +
-        `then call receiveBatch() again.`;
-      throw new Error(msg);
-    }
-
-    if (!bReceiver || !bReceiver.isOpen()) {
-      const options: ReceiveOptions = {
-        maxConcurrentCalls: 0,
-        receiveMode: this.receiveMode
-      };
-      this._context.batchingReceiver = bReceiver = BatchingReceiver.create(this._context, options);
-    }
-
-    try {
-      return await bReceiver.receive(
-        maxMessageCount,
-        maxWaitTimeInSeconds,
-        maxMessageWaitTimeoutInSeconds
-      );
-    } catch (err) {
-      log.error(
-        "[%s] Receiver '%s', an error occurred while receiving %d messages for %d " +
-          "max time:\n %O",
-        this._context.namespace.connectionId,
-        bReceiver.name,
-        maxMessageCount,
-        maxWaitTimeInSeconds,
-        err
-      );
-      throw err;
-    }
+  getReceiver(receiveMode?: ReceiveMode): Receiver {
+    return new Receiver(this._context, this.name, receiveMode);
   }
 
   /**
@@ -230,56 +120,43 @@ export class SubscriptionClient extends Client {
   }
 
   /**
-   * Renews the lock on the message. The lock will be renewed based on the setting specified on
-   * the queue.
+   * Fetches the next batch of active messages in the current MessageSession. The first call to
+   * `peek()` fetches the first active message for this client. Each subsequent call fetches the
+   * subsequent message in the entity.
    *
-   * When a message is received in `PeekLock` mode, the message is locked on the server for this
-   * receiver instance for a duration as specified during the Queue/Subscription creation
-   * (LockDuration). If processing of the message requires longer than this duration, the
-   * lock needs to be renewed. For each renewal, it resets the time the message is locked by the
-   * LockDuration set on the Entity.
+   * Unlike a `received` message, `peeked` message will not have lock token associated with it,
+   * and hence it cannot be `Completed/Abandoned/Deferred/Deadlettered/Renewed`. Also, unlike
+   * `receive() | receiveBatch()` this method will also fetch `Deferred` messages, but
+   * **NOT** `Deadlettered` messages.
    *
-   * @param lockTokenOrMessage - Lock token of the message or the message itself.
-   * @returns Promise<Date> - New lock token expiry date and time in UTC format.
+   * It is especially important to keep in mind when attempting to recover deferred messages from
+   * the queue. A message for which the `expiresAtUtc` instant has passed is no longer eligible for
+   * regular retrieval by any other means, even when it's being returned by `peek()`. Returning
+   * these messages is deliberate, since `peek()` is a diagnostics tool reflecting the current
+   * state of the log.
+   *
+   * @param messageCount The number of messages to retrieve. Default value `1`.
+   * @returns Promise<ReceivedMessageInfo[]>
    */
-  async renewLock(lockTokenOrMessage: string | ServiceBusMessage): Promise<Date> {
-    if (this.receiveMode !== ReceiveMode.peekLock) {
-      throw new Error("The operation is only supported in 'PeekLock' receive mode.");
-    }
-    return this._context.managementClient!.renewLock(lockTokenOrMessage);
+  async peekSession(sessionId: string, messageCount?: number): Promise<ReceivedMessageInfo[]> {
+    return this._context.managementClient!.peekMessagesBySession(sessionId, messageCount);
   }
 
   /**
-   * Receives a specific deferred message identified by `sequenceNumber` of the `Message`.
-   * @param sequenceNumber The sequence number of the message that will be received.
-   * @returns Promise<ServiceBusMessage | undefined>
-   * - Returns `Message` identified by sequence number.
-   * - Returns `undefined` if no such message is found.
-   * - Throws an error if the message has not been deferred.
+   * Peeks the desired number of messages in the MessageSession from the specified sequence number.
+   * @param fromSequenceNumber The sequence number from where to read the message.
+   * @param messageCount The number of messages to retrieve. Default value `1`.
+   * @returns Promise<ReceivedMessageInfo[]>
    */
-  async receiveDeferredMessage(sequenceNumber: Long): Promise<ServiceBusMessage | undefined> {
-    if (this.receiveMode !== ReceiveMode.peekLock) {
-      throw new Error("The operation is only supported in 'PeekLock' receive mode.");
-    }
-    return this._context.managementClient!.receiveDeferredMessage(sequenceNumber, this.receiveMode);
-  }
-
-  /**
-   * Receives a list of deferred messages identified by `sequenceNumbers`.
-   * @param sequenceNumbers A list containing the sequence numbers to receive.
-   * @returns Promise<ServiceBusMessage[]>
-   * - Returns a list of messages identified by the given sequenceNumbers.
-   * - Returns an empty list if no messages are found.
-   * - Throws an error if the messages have not been deferred.
-   */
-  async receiveDeferredMessages(sequenceNumbers: Long[]): Promise<ServiceBusMessage[]> {
-    if (this.receiveMode !== ReceiveMode.peekLock) {
-      throw new Error("The operation is only supported in 'PeekLock' receive mode.");
-    }
-    return this._context.managementClient!.receiveDeferredMessages(
-      sequenceNumbers,
-      this.receiveMode
-    );
+  async peekSessionBySequenceNumber(
+    sessionId: string,
+    fromSequenceNumber: Long,
+    messageCount?: number
+  ): Promise<ReceivedMessageInfo[]> {
+    return this._context.managementClient!.peekBySequenceNumber(fromSequenceNumber, {
+      sessionId: sessionId,
+      messageCount: messageCount
+    });
   }
 
   //#region topic-filters
@@ -346,12 +223,12 @@ export class SubscriptionClient extends Client {
    * @param options Options to provide sessionId and ReceiveMode for receiving messages from the
    * session enabled Servicebus Subscription.
    *
-   * @returns SessionClient An instance of a SessionClient to receive messages from the session.
+   * @returns SessionReceiver An instance of a SessionReceiver to receive messages from the session.
    */
-  async createSessionClient(options?: SessionClientOptions): Promise<SessionClient> {
+  async getSessionReceiver(options?: SessionReceiverOptions): Promise<SessionReceiver> {
     if (!options) options = {};
     this._context.isSessionEnabled = true;
-    return SessionClient.create(this._context, options);
+    return SessionReceiver.create(this._context, options);
   }
 
   //#endregion

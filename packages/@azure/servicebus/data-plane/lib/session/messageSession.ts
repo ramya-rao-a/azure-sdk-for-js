@@ -19,12 +19,7 @@ import {
 import { LinkEntity } from "../core/linkEntity";
 import { ClientEntityContext } from "../clientEntityContext";
 import { convertTicksToDate, calculateRenewAfterDuration } from "../util/utils";
-import {
-  ServiceBusMessage,
-  ReceivedMessageInfo,
-  DispositionType,
-  ReceiveMode
-} from "../serviceBusMessage";
+import { ServiceBusMessage, DispositionType, ReceiveMode } from "../serviceBusMessage";
 import { messageDispositionTimeout } from "../util/constants";
 
 export enum Callee {
@@ -36,10 +31,7 @@ export enum Callee {
  * Describes the signature for the message handler that needs to be provided while receiving
  * messages in a session.
  */
-export type OnSessionMessage = (
-  messageSession: SessionClient,
-  message: ServiceBusMessage
-) => Promise<void>;
+export type OnSessionMessage = (message: ServiceBusMessage) => Promise<void>;
 /**
  * Describes the options that need to be provided while creating a message session receiver link.
  * @ignore
@@ -79,9 +71,9 @@ export interface SessionMessageHandlerOptions {
   maxMessageWaitTimeoutInSeconds?: number;
 }
 /**
- * Describes the options for creating a SessionClient.
+ * Describes the options for creating a SessionReceiver.
  */
-export interface SessionClientOptions {
+export interface SessionReceiverOptions {
   /**
    * @property {string} [sessionId] The sessionId for the message session.
    */
@@ -108,14 +100,14 @@ export interface SessionManagerOptions extends SessionMessageHandlerOptions {
  * Describes all the options that can be set while instantiating a MessageSession object.
  */
 export type MessageSessionOptions = SessionManagerOptions &
-  SessionClientOptions & {
+  SessionReceiverOptions & {
     callee?: Callee;
   };
 
 /**
  * Describes the receiver for a Message Session.
  */
-export class SessionClient extends LinkEntity {
+export class SessionReceiver extends LinkEntity {
   /**
    * @property {Date} [sessionLockedUntilUtc] Provides the duration until which the session is locked.
    */
@@ -481,7 +473,7 @@ export class SessionClient extends LinkEntity {
   /**
    * Starts the receiver in streaming mode by establishing an AMQP session and an AMQP receiver
    * link on the session.
-   * To stop receiving messages, call `close()` on the SessionClient.
+   * To stop receiving messages, call `close()` on the SessionReceiver.
    *
    * @param onSessionMessage Callback for each incoming message.
    * @param onError Callback for any error that occurs while receiving messages.
@@ -523,9 +515,6 @@ export class SessionClient extends LinkEntity {
      * @ignore
      */
     const resetTimerOnNewMessageReceived = () => {
-      if (this.callee !== Callee.sessionManager) {
-        return;
-      }
       if (this._newMessageReceivedTimer) clearTimeout(this._newMessageReceivedTimer);
       if (this.maxMessageWaitTimeoutInSeconds) {
         this._newMessageReceivedTimer = setTimeout(async () => {
@@ -536,11 +525,15 @@ export class SessionClient extends LinkEntity {
             } seconds. Hence closing it.`;
           log.error("[%s] %s", this._context.namespace.connectionId, msg);
 
-          const error = translate({
-            condition: "com.microsoft:message-wait-timeout",
-            description: msg
-          });
-          this._notifyError(translate(error));
+          if (this.callee === Callee.sessionManager) {
+            // The session manager will not forward this error to user.
+            // Instead, this is taken as a indicator to create a new session client for the next session.
+            const error = translate({
+              condition: "com.microsoft:message-wait-timeout",
+              description: msg
+            });
+            this._notifyError(translate(error));
+          }
           await this.close();
         }, this.maxMessageWaitTimeoutInSeconds * 1000);
       }
@@ -555,7 +548,7 @@ export class SessionClient extends LinkEntity {
           context.delivery!
         );
         try {
-          await this._onMessage(this, bMessage);
+          await this._onMessage(bMessage);
         } catch (err) {
           const error = translate(err);
           // Nothing much to do if user's message handler throws. Let us try abandoning the message.
@@ -640,16 +633,10 @@ export class SessionClient extends LinkEntity {
    * @param maxMessageCount The maximum message count. Must be a value greater than 0.
    * @param maxWaitTimeInSeconds The maximum wait time in seconds for which the Receiver
    * should wait to receive the said amount of messages. If not provided, it defaults to 60 seconds.
-   * @param {number} [maxMessageWaitTimeoutInSeconds] The maximum amount of idle time the Receiver
-   * will wait after creating the link or after receiving a new message. If no messages are received
-   * in that time frame then the batch receive operation ends. It is advised to keep this value at
-   * 10% of the lockDuration value.
-   * - **Default**: `2` seconds.
    */
   async receiveBatch(
     maxMessageCount: number,
-    maxWaitTimeInSeconds?: number,
-    maxMessageWaitTimeoutInSeconds?: number
+    maxWaitTimeInSeconds?: number
   ): Promise<ServiceBusMessage[]> {
     if (this._isReceivingMessages) {
       throw new Error(
@@ -668,10 +655,6 @@ export class SessionClient extends LinkEntity {
       maxWaitTimeInSeconds = Constants.defaultOperationTimeoutInSeconds;
     }
 
-    if (maxMessageWaitTimeoutInSeconds == undefined) {
-      maxMessageWaitTimeoutInSeconds = 2;
-    }
-
     const brokeredMessages: ServiceBusMessage[] = [];
     this._isReceivingMessages = true;
 
@@ -684,7 +667,7 @@ export class SessionClient extends LinkEntity {
         this.maxMessageWaitTimeoutInSeconds = value;
       };
 
-      setMaxMessageWaitTimeoutInSeconds(maxMessageWaitTimeoutInSeconds);
+      setMaxMessageWaitTimeoutInSeconds(1);
 
       this._onError = (error: MessagingError | Error) => {
         this._isReceivingMessages = false;
@@ -736,9 +719,6 @@ export class SessionClient extends LinkEntity {
               } seconds. Hence closing it.`;
             log.error("[%s] %s", this._context.namespace.connectionId, msg);
             finalAction();
-            if (this.callee === Callee.sessionManager) {
-              await this.close();
-            }
           }, this.maxMessageWaitTimeoutInSeconds * 1000);
         }
       };
@@ -756,6 +736,7 @@ export class SessionClient extends LinkEntity {
 
       // Action to be performed on the "message" event.
       onReceiveMessage = async (context: EventContext) => {
+        clearTimeout(waitTimer);
         resetTimerOnNewMessageReceived();
         const data: ServiceBusMessage = new ServiceBusMessage(
           this._context,
@@ -876,45 +857,6 @@ export class SessionClient extends LinkEntity {
    */
   async getState(): Promise<any> {
     return this._context.managementClient!.getSessionState(this.sessionId!);
-  }
-
-  /**
-   * Fetches the next batch of active messages in the current MessageSession. The first call to
-   * `peek()` fetches the first active message for this client. Each subsequent call fetches the
-   * subsequent message in the entity.
-   *
-   * Unlike a `received` message, `peeked` message will not have lock token associated with it,
-   * and hence it cannot be `Completed/Abandoned/Deferred/Deadlettered/Renewed`. Also, unlike
-   * `receive() | receiveBatch()` this method will also fetch `Deferred` messages, but
-   * **NOT** `Deadlettered` messages.
-   *
-   * It is especially important to keep in mind when attempting to recover deferred messages from
-   * the queue. A message for which the `expiresAtUtc` instant has passed is no longer eligible for
-   * regular retrieval by any other means, even when it's being returned by `peek()`. Returning
-   * these messages is deliberate, since `peek()` is a diagnostics tool reflecting the current
-   * state of the log.
-   *
-   * @param messageCount The number of messages to retrieve. Default value `1`.
-   * @returns Promise<ReceivedMessageInfo[]>
-   */
-  async peek(messageCount?: number): Promise<ReceivedMessageInfo[]> {
-    return this._context.managementClient!.peekMessagesBySession(this.sessionId!, messageCount);
-  }
-
-  /**
-   * Peeks the desired number of messages in the MessageSession from the specified sequence number.
-   * @param fromSequenceNumber The sequence number from where to read the message.
-   * @param messageCount The number of messages to retrieve. Default value `1`.
-   * @returns Promise<ReceivedMessageInfo[]>
-   */
-  async peekBySequenceNumber(
-    fromSequenceNumber: Long,
-    messageCount?: number
-  ): Promise<ReceivedMessageInfo[]> {
-    return this._context.managementClient!.peekBySequenceNumber(fromSequenceNumber, {
-      sessionId: this.sessionId!,
-      messageCount: messageCount
-    });
   }
 
   /**
@@ -1182,8 +1124,8 @@ export class SessionClient extends LinkEntity {
   static async create(
     context: ClientEntityContext,
     options?: MessageSessionOptions
-  ): Promise<SessionClient> {
-    const messageSession = new SessionClient(context, options);
+  ): Promise<SessionReceiver> {
+    const messageSession = new SessionReceiver(context, options);
     await messageSession._init();
     return messageSession;
   }
