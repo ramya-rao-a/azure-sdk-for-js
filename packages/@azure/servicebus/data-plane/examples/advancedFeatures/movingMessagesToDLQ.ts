@@ -29,21 +29,23 @@ async function main(): Promise<void> {
 async function sendMessage(): Promise<void> {
   // If using Topics, use createTopicClient to send to a topic
   const client = ns.createQueueClient(queueName);
+  const sender = client.getSender();
 
   const message = {
     body: { name: "Creamy Chicken Pasta", type: "Dinner" },
     contentType: "application/json",
     label: "Recipe"
   };
-  await client.send(message);
+  await sender.send(message);
   await client.close();
 }
 
 async function receiveMessage(): Promise<void> {
   // If using Topics, use createSubscriptionClient to receive from a topic subscription
   const client = ns.createQueueClient(queueName);
+  const receiver = client.getReceiver();
 
-  const message = await client.receiveBatch(1);
+  const message = await receiver.receiveBatch(1);
   console.log(">>>>> Receiving one message from the main queue - ", message);
 
   if (message) {

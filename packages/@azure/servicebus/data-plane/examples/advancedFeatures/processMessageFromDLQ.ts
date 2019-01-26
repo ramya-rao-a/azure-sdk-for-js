@@ -28,8 +28,9 @@ async function main(): Promise<void> {
 
 async function processDeadletterMessageQueue(): Promise<void> {
   const client = ns.createQueueClient(deadLetterQueueName);
+  const receiver = client.getReceiver();
 
-  const message = await client.receiveBatch(1);
+  const message = await receiver.receiveBatch(1);
   console.log(">>>>> Reprocessing the message in DLQ - ", message);
 
   if (message.length > 0) {
@@ -49,11 +50,12 @@ async function processDeadletterMessageQueue(): Promise<void> {
 async function fixAndResendMessage(oldMessage: ServiceBusMessage): Promise<void> {
   // If using Topics, use createTopicClient to send to a topic
   const client = ns.createQueueClient(queueName);
+  const sender = client.getSender();
 
   // Inspect given message and make any changes if necessary
   const repairedMessage = oldMessage.clone();
 
-  await client.send(repairedMessage);
+  await sender.send(repairedMessage);
   await client.close();
 }
 
