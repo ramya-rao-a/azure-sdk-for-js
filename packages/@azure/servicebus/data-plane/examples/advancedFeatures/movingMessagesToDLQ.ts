@@ -46,9 +46,9 @@ async function receiveMessage(): Promise<void> {
   const receiver = client.getReceiver();
 
   const message = await receiver.receiveBatch(1);
-  console.log(">>>>> Receiving one message from the main queue - ", message);
 
   if (message) {
+    console.log(">>>>> Receiving one message from the main queue - ", message[0].body);
     // Deadletter the message received
     await message[0].deadLetter({
       deadletterReason: "Incorrect Recipe type",
