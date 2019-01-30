@@ -7,7 +7,8 @@ import { StreamingReceiver, MessageHandlerOptions } from "./core/streamingReceiv
 import { BatchingReceiver } from "./core/batchingReceiver";
 import { ReceiveOptions, OnError, OnMessage, ReceiverType } from "./core/messageReceiver";
 import { ClientEntityContext } from "./clientEntityContext";
-import { ServiceBusMessage, ReceiveMode } from "./serviceBusMessage";
+import { ServiceBusMessage, ReceiveMode, ReceivedMessageInfo } from "./serviceBusMessage";
+import { SessionReceiverOptions, SessionReceiver } from "./session/messageSession";
 
 /**
  * Describes the options for creating a Receiver.
@@ -237,6 +238,157 @@ export class Receiver {
         `cannot be made at this time. Either wait for current receiver to complete or create a new receiver.`;
 
       throw new Error(msg);
+    }
+  }
+}
+
+export class SessionReceiverOuter {
+  private _context: ClientEntityContext;
+  private _receiveMode: ReceiveMode;
+  private _sessionId: string | undefined;
+  private _sessionReceiver: SessionReceiver;
+
+  public get sessionId(): string {
+    return this._sessionId || "";
+  }
+
+  constructor(context: ClientEntityContext, sessionReceiver: SessionReceiver) {
+    this._context = context;
+
+    this._receiveMode = sessionReceiver.receiveMode;
+    this._sessionId = sessionReceiver.sessionId;
+    this._sessionReceiver = sessionReceiver;
+  }
+
+  /**
+   * Renews the lock for the Session.
+   * @returns Promise<Date> New lock token expiry date and time in UTC format.
+   */
+  async renewLock(): Promise<Date> {
+    return this._context.managementClient!.renewSessionLock(this.sessionId!);
+  }
+
+  /**
+   * Sets the state of the MessageSession.
+   * @param state The state that needs to be set.
+   */
+  async setState(state: any): Promise<void> {
+    return this._context.managementClient!.setSessionState(this.sessionId!, state);
+  }
+
+  /**
+   * Gets the state of the MessageSession.
+   * @returns Promise<any> The state of that session
+   */
+  async getState(): Promise<any> {
+    return this._context.managementClient!.getSessionState(this.sessionId!);
+  }
+
+  /**
+   * Fetches the next batch of active messages in the current MessageSession. The first call to
+   * `peek()` fetches the first active message for this client. Each subsequent call fetches the
+   * subsequent message in the entity.
+   *
+   * Unlike a `received` message, `peeked` message will not have lock token associated with it,
+   * and hence it cannot be `Completed/Abandoned/Deferred/Deadlettered/Renewed`. Also, unlike
+   * `receive() | receiveBatch()` this method will also fetch `Deferred` messages, but
+   * **NOT** `Deadlettered` messages.
+   *
+   * It is especially important to keep in mind when attempting to recover deferred messages from
+   * the queue. A message for which the `expiresAtUtc` instant has passed is no longer eligible for
+   * regular retrieval by any other means, even when it's being returned by `peek()`. Returning
+   * these messages is deliberate, since `peek()` is a diagnostics tool reflecting the current
+   * state of the log.
+   *
+   * @param messageCount The number of messages to retrieve. Default value `1`.
+   * @returns Promise<ReceivedMessageInfo[]>
+   */
+  async peek(messageCount?: number): Promise<ReceivedMessageInfo[]> {
+    return this._context.managementClient!.peekMessagesBySession(this.sessionId!, messageCount);
+  }
+
+  /**
+   * Peeks the desired number of messages in the MessageSession from the specified sequence number.
+   * @param fromSequenceNumber The sequence number from where to read the message.
+   * @param messageCount The number of messages to retrieve. Default value `1`.
+   * @returns Promise<ReceivedMessageInfo[]>
+   */
+  async peekBySequenceNumber(
+    fromSequenceNumber: Long,
+    messageCount?: number
+  ): Promise<ReceivedMessageInfo[]> {
+    return this._context.managementClient!.peekBySequenceNumber(fromSequenceNumber, {
+      sessionId: this.sessionId!,
+      messageCount: messageCount
+    });
+  }
+
+  /**
+   * Receives a deferred message identified by the given `sequenceNumber`.
+   * @param sequenceNumber The sequence number of the message that will be received.
+   * @returns Promise<ServiceBusMessage | undefined>
+   * - Returns `Message` identified by sequence number.
+   * - Returns `undefined` if no such message is found.
+   * - Throws an error if the message has not been deferred.
+   */
+  async receiveDeferredMessage(sequenceNumber: Long): Promise<ServiceBusMessage | undefined> {
+    if (this._receiveMode !== ReceiveMode.peekLock) {
+      throw new Error("The operation is only supported in 'PeekLock' receive mode.");
+    }
+    return this._context.managementClient!.receiveDeferredMessage(
+      sequenceNumber,
+      this._receiveMode,
+      this.sessionId
+    );
+  }
+
+  /**
+   * Receives a list of deferred messages identified by given `sequenceNumbers`.
+   * @param sequenceNumbers A list containing the sequence numbers to receive.
+   * @returns Promise<ServiceBusMessage[]>
+   * - Returns a list of messages identified by the given sequenceNumbers.
+   * - Returns an empty list if no messages are found.
+   * - Throws an error if the messages have not been deferred.
+   */
+  async receiveDeferredMessages(sequenceNumbers: Long[]): Promise<ServiceBusMessage[]> {
+    if (this._receiveMode !== ReceiveMode.peekLock) {
+      throw new Error("The operation is only supported in 'PeekLock' receive mode.");
+    }
+    return this._context.managementClient!.receiveDeferredMessages(
+      sequenceNumbers,
+      this._receiveMode,
+      this.sessionId
+    );
+  }
+
+  /**
+   * Returns a batch of messages based on given count and timeout over an AMQP receiver link
+   * from a Queue/Subscription.
+   *
+   * @param maxMessageCount      The maximum number of messages to receive from Queue/Subscription.
+   * @param maxWaitTimeInSeconds The maximum wait time in seconds for which the Receiver
+   * should wait to receive the first message. If no message is received by this time,
+   * the returned promise gets resolved to an empty array.
+   * - **Default**: `60` seconds.
+   * @returns Promise<ServiceBusMessage[]> A promise that resolves with an array of Message objects.
+   */
+  async receiveBatch(
+    maxMessageCount: number,
+    maxWaitTimeInSeconds?: number
+  ): Promise<ServiceBusMessage[]> {
+    try {
+      return await this._sessionReceiver.receiveBatch(maxMessageCount, maxWaitTimeInSeconds);
+    } catch (err) {
+      log.error(
+        "[%s] Receiver '%s', an error occurred while receiving %d messages for %d " +
+          "max time:\n %O",
+        this._context.namespace.connectionId,
+        this._sessionReceiver.name,
+        maxMessageCount,
+        maxWaitTimeInSeconds,
+        err
+      );
+      throw err;
     }
   }
 }
