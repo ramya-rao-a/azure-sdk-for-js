@@ -64,10 +64,11 @@ export class Receiver {
    *
    * @param onMessage - Handler for processing each incoming message.
    * @param onError - Handler for any error that occurs while receiving or processing messages.
-   * @param options - Options to control if messages should be automatically completed, and/or have
-   * their locks automatically renewed. You can control the maximum number of messages that should
-   * be concurrently processed. You can also provide a timeout in seconds to denote the
-   * amount of time to wait for a new message before closing the receiver.
+   * @param options - Options to control
+   * - if messages should be automatically completed (default is true),
+   * - if messages should have their locks automatically renewed (default is true)
+   * - number of messages that should be concurrently processed (default is 1)
+   * - amount of time to wait for the next message, after which receiver will be closed
    *
    * @returns void
    */
@@ -133,7 +134,7 @@ export class Receiver {
    * receiver instance for a duration as specified during the Queue/Subscription creation
    * (LockDuration). If processing of the message requires longer than this duration, the
    * lock needs to be renewed. For each renewal, it resets the time the message is locked by the
-   * LockDuration set on the Entity.
+   * LockDuration.
    *
    * @param lockTokenOrMessage - Lock token of the message or the message itself.
    * @returns Promise<Date> - New lock token expiry date and time in UTC format.
@@ -471,11 +472,11 @@ export class SessionReceiver {
    *
    * @param onMessage - Handler for processing each incoming message.
    * @param onError - Handler for any error that occurs while receiving or processing messages.
-   * @param options - Options to control whether messages should be automatically completed
-   * or if the lock on the session should be automatically renewed. You can control the
-   * maximum number of messages that should be concurrently processed. You can
-   * also provide a timeout in seconds to denote the amount of time to wait for a new message
-   * before closing the receiver.
+   * @param options - Options to control
+   * - if messages should be automatically completed (default is true),
+   * - if the lock on the session should be automatically renewed (default is true)
+   * - number of messages that should be concurrently processed (default is 1)
+   * - amount of time to wait for the next message, after which receiver will be closed
    *
    * @returns void
    */

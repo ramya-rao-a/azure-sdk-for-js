@@ -32,6 +32,9 @@ export class TopicClient implements Client {
    */
   private _context: ClientEntityContext;
 
+  /**
+   * The sender returned by the getSender() function
+   */
   private _currentSender: Sender | undefined;
 
   /**
@@ -54,8 +57,8 @@ export class TopicClient implements Client {
   /**
    * Closes the AMQP link for the sender created by this client.
    * Once closed, neither the TopicClient nor its senders can be used for any
-   * further operations. Use the `createTopicClient` function on the Namespace object to
-   * instantiate a new TopicClient
+   * further operations. In such cases, use the `createTopicClient` function on the Namespace
+   * object to instantiate a new TopicClient
    *
    * @returns {Promise<void>}
    */
@@ -85,11 +88,16 @@ export class TopicClient implements Client {
   }
 
   /**
-   * Will reconnect the topicClient and its sender links.
-   * This is meant for the library to use to resume sending when retryable errors are seen.
+   * The function that will be called when the topicClient gets detached due to underlying AMQP
+   * connection error. Based on whether the error is retryable, the sender created by this
+   * client will be reconnected and will resume send operations.
+   *
+   * This is meant for the library to use when an AMQP connection error is detected.
    * This is not meant for the consumer of this library to use.
+   *
    * @ignore
-   * @param error Error if any due to which we are attempting to reconnect
+   * @param error The AMQP connection error which will be used to determine if the
+   * sender created by this client should be reconnected and resume operations.
    */
   async detached(error?: AmqpError | Error): Promise<void> {
     try {
@@ -107,6 +115,9 @@ export class TopicClient implements Client {
   /**
    * Gets a Sender to be used for sending messages, scheduling messages to be sent at a later time
    * and cancelling such scheduled messages.
+   *
+   * If no sender exists on the queueClient or the existing one is closed by the user,
+   * a new sender is created and returned.
    *
    * If the Topic has session enabled Subscriptions, then messages sent without the `sessionId`
    * property will go to the dead letter queue of such subscriptions.

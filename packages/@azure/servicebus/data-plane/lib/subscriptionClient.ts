@@ -50,6 +50,9 @@ export class SubscriptionClient implements Client {
    */
   private _context: ClientEntityContext;
 
+  /**
+   * The receiver returned by the getReceiver() function
+   */
   private _currentReceiver: Receiver | undefined;
 
   /**
@@ -77,8 +80,8 @@ export class SubscriptionClient implements Client {
   /**
    * Closes the AMQP link for the receivers created by this client.
    * Once closed, neither the SubscriptionClient nor its recievers can be used for any
-   * further operations. Use the `createSubscriptionClient` function on the Namespace object to
-   * instantiate a new SubscriptionClient.
+   * further operations. In such cases, use the `createSubscriptionClient` function on the Namespace
+   * object to instantiate a new SubscriptionClient.
    *
    * @returns {Promise<void>}
    */
@@ -121,11 +124,16 @@ export class SubscriptionClient implements Client {
   }
 
   /**
-   * Will reconnect the subscritpionClient and its receiver links.
-   * This is meant for the library to use to resume receiving when retryable errors are seen.
+   * The function that will be called when the subscriptionClient gets detached due to underlying
+   * AMQP connection error. Based on whether the error is retryable, the receivers created by this
+   * client will be reconnected and will resume receive operations.
+   *
+   * This is meant for the library to use when an AMQP connection error is detected.
    * This is not meant for the consumer of this library to use.
+   *
    * @ignore
-   * @param error Error if any due to which we are attempting to reconnect
+   * @param error The AMQP connection error which will be used to determine if the
+   * receivers created by this client should be reconnected and resume operations.
    */
   async detached(error?: AmqpError | Error): Promise<void> {
     try {
@@ -142,6 +150,9 @@ export class SubscriptionClient implements Client {
 
   /**
    * Gets a Receiver to be used for receiving messages in batches or by registering handlers.
+   *
+   * If no receiver exists on the subsciptionClient or the existing one is closed by the user,
+   * a new receiver is created and returned.
    *
    * @param options Options for creating the receiver.
    */
@@ -160,6 +171,9 @@ export class SubscriptionClient implements Client {
    *
    * Unlike a `received` message, `peeked` message is a read-only version of the message.
    * It cannot be `Completed/Abandoned/Deferred/Deadlettered`. The lock on it cannot be renewed.
+   *
+   * On partitioned entities, `peek` gets messages from a single partition and not across
+   * partitions. So, don't use it to check the number of messages across partitions.
    *
    * @param [messageCount] The number of messages to retrieve. Default value `1`.
    * @returns Promise<ReceivedSBMessage[]>
@@ -252,7 +266,7 @@ export class SubscriptionClient implements Client {
   // }
 
   /**
-   * Gets a SessionReceiver for receiving messages in batches or by registering handlers from a
+   * Creates a SessionReceiver for receiving messages in batches or by registering handlers from a
    * session enabled Subscription. When no sessionId is given, a random session among the available
    * sessions is used.
    *

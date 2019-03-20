@@ -36,7 +36,14 @@ export class QueueClient implements Client {
    */
   private _context: ClientEntityContext;
 
+  /**
+   * The receiver returned by the getReceiver() function
+   */
   private _currentReceiver: Receiver | undefined;
+
+  /**
+   * The sender returned by the getSender() function
+   */
   private _currentSender: Sender | undefined;
 
   /**
@@ -59,8 +66,8 @@ export class QueueClient implements Client {
   /**
    * Closes all the AMQP links for sender/receivers created by this client.
    * Once closed, neither the QueueClient nor its sender/recievers can be used for any
-   * further operations. Use the `createQueueClient` function on the Namespace object to
-   * instantiate a new QueueClient
+   * further operations. In such cases, use the `createQueueClient` function on the Namespace
+   * object to instantiate a new QueueClient.
    *
    * @returns {Promise<void>}
    */
@@ -108,11 +115,16 @@ export class QueueClient implements Client {
   }
 
   /**
-   * Will reconnect the queueClient and all its sender/receiver links.
-   * This is meant for the library to use to resume sending/receiving when retryable errors are seen.
+   * The function that will be called when the queueClient gets detached due to underlying AMQP
+   * connection error. Based on whether the error is retryable, the sender/receivers created by this
+   * client will be reconnected and will resume send/receive operations.
+   *
+   * This is meant for the library to use when an AMQP connection error is detected.
    * This is not meant for the consumer of this library to use.
+   *
    * @ignore
-   * @param error Error if any due to which we are attempting to reconnect
+   * @param error The AMQP connection error which will be used to determine if the
+   * sender/receivers created by this client should be reconnected and resume operations.
    */
   async detached(error?: AmqpError | Error): Promise<void> {
     try {
@@ -130,6 +142,9 @@ export class QueueClient implements Client {
   /**
    * Gets a Sender to be used for sending messages, scheduling messages to be sent at a later time
    * and cancelling such scheduled messages.
+   *
+   * If no sender exists on the queueClient or the existing one is closed by the user,
+   * a new sender is created and returned.
    */
   getSender(): Sender {
     this.throwErrorIfClientOrConnectionClosed();
@@ -141,6 +156,9 @@ export class QueueClient implements Client {
 
   /**
    * Gets a Receiver to be used for receiving messages in batches or by registering handlers.
+   *
+   * If no receiver exists on the queueClient or the existing one is closed by the user,
+   * a new receiver is created and returned.
    *
    * @param options Options for creating the receiver.
    */
@@ -159,6 +177,9 @@ export class QueueClient implements Client {
    *
    * Unlike a `received` message, `peeked` message is a read-only version of the message.
    * It cannot be `Completed/Abandoned/Deferred/Deadlettered`. The lock on it cannot be renewed.
+   *
+   * On partitioned entities, `peek` gets messages from a single partition and not across
+   * partitions. So, don't use it to check the number of messages across partitions.
    *
    * @param [messageCount] The number of messages to retrieve. Default value `1`.
    * @returns Promise<ReceivedSBMessage[]>
@@ -208,7 +229,7 @@ export class QueueClient implements Client {
   // }
 
   /**
-   * Gets a SessionReceiver for receiving messages in batches or by registering handlers from a
+   * Creates a SessionReceiver for receiving messages in batches or by registering handlers from a
    * session enabled Queue. When no sessionId is given, a random session among the available
    * sessions is used.
    *
