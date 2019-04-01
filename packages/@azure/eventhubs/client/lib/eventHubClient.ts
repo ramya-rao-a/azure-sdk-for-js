@@ -20,6 +20,27 @@ import { BatchingReceiver } from "./batchingReceiver";
 import { IotHubClient } from "./iothub/iothubClient";
 
 /**
+ * Describes the required shape of WebSocket instances.
+ * @interface WebSocketInstance
+ */
+export interface WebSocketInstance {
+  send: Function;
+  onmessage: Function | null;
+  onopen: Function | null;
+  onclose: Function | null;
+  onerror: Function | null;
+}
+
+/**
+ * Describes the required shape of WebSocket constructors.
+ * @interface WebSocketImpl
+ */
+export interface WebSocketImpl {
+  new(url: string, protocols?: string | string[]): WebSocketInstance;
+}
+
+
+/**
  * Describes the options that one can set while receiving messages.
  * @interface ReceiveOptions
  */
@@ -74,6 +95,18 @@ export interface ClientOptionsBase {
    * user agent string.
    */
   userAgent?: string;
+  /**
+   * @property {WebSocketImpl} [webSocket] - The WebSocket constructor used to create an AMQP connection
+   * over a WebSocket. In browsers, the built-in WebSocket will be  used by default. In Node, a
+   * TCP socket will be used if a WebSocket constructor is not provided.
+   */
+  webSocket?: WebSocketImpl;
+
+  /**
+   * @property {string} [webSocketEndpointPath] - The path for the endpoint that accepts an AMQP
+   * connection over WebSockets.
+   */
+  webSocketEndpointPath?: string;
 }
 
 /**
@@ -303,6 +336,10 @@ export class EventHubClient {
       throw new Error("'connectionString' is a required parameter and must be of type: 'string'.");
     }
     const config = EventHubConnectionConfig.create(connectionString, path);
+    if (options && options.webSocket) {
+      config.webSocket = options.webSocket;
+      config.webSocketEndpointPath = options.webSocketEndpointPath;
+    }
 
     if (!config.entityPath) {
       throw new Error(`Either the connectionString must have "EntityPath=<path-to-entity>" or ` +
