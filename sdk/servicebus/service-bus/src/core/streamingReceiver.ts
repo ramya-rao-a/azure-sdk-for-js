@@ -97,22 +97,9 @@ export class StreamingReceiver extends MessageReceiver {
     throwErrorIfConnectionClosed(this._context.namespace);
     this._onMessage = onMessage;
     this._onError = onError;
-    if (this.isOpen()) {
-      const msg =
-        `A streaming receiver with id "${this.name}" is active for ` +
-        `"${this._context.entityPath}". A new receive() call cannot be made at this time. ` +
-        `Either wait for current receiver to complete or create a new receiver.`;
-      throw new Error(msg);
+    if (this._receiver) {
+      this._receiver.addCredit(this.maxConcurrentCalls);
     }
-    this._init()
-      .then(() => {
-        if (this._receiver) {
-          this._receiver.addCredit(this.maxConcurrentCalls);
-        }
-      })
-      .catch((err) => {
-        this._onError!(err);
-      });
   }
 
   /**
@@ -123,12 +110,12 @@ export class StreamingReceiver extends MessageReceiver {
    * @param {ReceiveOptions} [options]     Receive options.
    * @return {StreamingReceiver} An instance of StreamingReceiver.
    */
-  static create(context: ClientEntityContext, options?: ReceiveOptions): StreamingReceiver {
+  static async create(context: ClientEntityContext, options?: ReceiveOptions): Promise<void> {
     throwErrorIfConnectionClosed(context.namespace);
     if (!options) options = {};
     if (options.autoComplete == undefined) options.autoComplete = true;
     const sReceiver = new StreamingReceiver(context, options);
     context.streamingReceiver = sReceiver;
-    return sReceiver;
+    return sReceiver._init();
   }
 }

@@ -381,7 +381,7 @@ describe("Streaming - Abandon message", function(): void {
     await testMultipleAbandons();
   });
 
-  it("Unpartitioned Queue: Multiple abandons until maxDeliveryCount", async function(): Promise<
+  it("UnPartitioned Queue: Multiple abandons until maxDeliveryCount", async function(): Promise<
     void
   > {
     await beforeEachTest(ClientType.UnpartitionedQueue, ClientType.UnpartitionedQueue);
@@ -757,7 +757,7 @@ describe("Streaming - Settle an already Settled message throws error", () => {
     await testSettlement(DispositionType.abandon);
   });
 
-  it("UnPartitioned Queue: abandon() throws error", async function(): Promise<void> {
+  it.only("UnPartitioned Queue: abandon() throws error", async function(): Promise<void> {
     await beforeEachTest(ClientType.UnpartitionedQueue, ClientType.UnpartitionedQueue);
     await testSettlement(DispositionType.abandon);
   });
@@ -777,7 +777,7 @@ describe("Streaming - Settle an already Settled message throws error", () => {
     await testSettlement(DispositionType.defer);
   });
 
-  it("UnPartitioned Queue: defer() throws error", async function(): Promise<void> {
+  it.only("UnPartitioned Queue: defer() throws error", async function(): Promise<void> {
     await beforeEachTest(ClientType.UnpartitionedQueue, ClientType.UnpartitionedQueue);
     await testSettlement(DispositionType.defer);
   });
@@ -797,7 +797,7 @@ describe("Streaming - Settle an already Settled message throws error", () => {
     await testSettlement(DispositionType.deadletter);
   });
 
-  it("UnPartitioned Queue: deadLetter() throws error", async function(): Promise<void> {
+  it.only("UnPartitioned Queue: deadLetter() throws error", async function(): Promise<void> {
     await beforeEachTest(ClientType.UnpartitionedQueue, ClientType.UnpartitionedQueue);
     await testSettlement(DispositionType.deadletter);
   });
@@ -852,7 +852,7 @@ describe("Streaming - User Error", function(): void {
     await testUserError();
   });
 
-  it("UnPartitioned Queue: onError handler is called for user error", async function(): Promise<
+  it.only("UnPartitioned Queue: onError handler is called for user error", async function(): Promise<
     void
   > {
     await beforeEachTest(ClientType.UnpartitionedQueue, ClientType.UnpartitionedQueue);
@@ -927,17 +927,17 @@ describe("Streaming - maxConcurrentCalls", function(): void {
     await testConcurrency(2);
   });
 
-  it("Unpartitioned Queue: no maxConcurrentCalls passed", async function(): Promise<void> {
+  it.only("UnPartitioned Queue: no maxConcurrentCalls passed", async function(): Promise<void> {
     await beforeEachTest(ClientType.UnpartitionedQueue, ClientType.UnpartitionedQueue);
     await testConcurrency();
   });
 
-  it("Unpartitioned Queue: pass 1 for maxConcurrentCalls", async function(): Promise<void> {
+  it.only("UnPartitioned Queue: pass 1 for maxConcurrentCalls", async function(): Promise<void> {
     await beforeEachTest(ClientType.UnpartitionedQueue, ClientType.UnpartitionedQueue);
     await testConcurrency(1);
   });
 
-  it("Unpartitioned Queue: pass 2 for maxConcurrentCalls", async function(): Promise<void> {
+  it.only("UnPartitioned Queue: pass 2 for maxConcurrentCalls", async function(): Promise<void> {
     await beforeEachTest(ClientType.UnpartitionedQueue, ClientType.UnpartitionedQueue);
     await testConcurrency(2);
   });
@@ -962,12 +962,12 @@ describe("Streaming - maxConcurrentCalls", function(): void {
     await testConcurrency();
   });
 
-  it("Unpartitioned Queue: pass 1 for maxConcurrentCalls", async function(): Promise<void> {
+  it.only("UnPartitioned Queue: pass 1 for maxConcurrentCalls", async function(): Promise<void> {
     await beforeEachTest(ClientType.UnpartitionedTopic, ClientType.UnpartitionedSubscription);
     await testConcurrency(1);
   });
 
-  it("Unpartitioned Queue: pass 2 for maxConcurrentCalls", async function(): Promise<void> {
+  it.only("UnPartitioned Queue: pass 2 for maxConcurrentCalls", async function(): Promise<void> {
     await beforeEachTest(ClientType.UnpartitionedTopic, ClientType.UnpartitionedSubscription);
     await testConcurrency(2);
   });
@@ -1063,7 +1063,7 @@ describe("Streaming - Not receive messages after receiver is closed", function()
     await testReceiveMessages();
   });
 
-  it("UnPartitioned Queue: (Receive And Delete mode) Not receive messages after receiver is closed", async function(): Promise<
+  it.only("UnPartitioned Queue: (Receive And Delete mode) Not receive messages after receiver is closed", async function(): Promise<
     void
   > {
     await beforeEachTest(
