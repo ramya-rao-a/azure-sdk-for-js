@@ -1,16 +1,26 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import * as log from "./log";
+import Long from "long";
+import { AmqpError, generate_uuid } from "rhea-promise";
+import { Client } from "./client";
+import { ClientEntityContext } from "./clientEntityContext";
 import { ConnectionContext } from "./connectionContext";
+import {
+  CorrelationFilter,
+  RuleDescription,
+  validCorrelationProperties
+} from "./core/managementClient";
+import * as log from "./log";
 import { Receiver, SessionReceiver } from "./receiver";
 import { ReceivedMessageInfo, ReceiveMode } from "./serviceBusMessage";
-import { Client } from "./client";
-import { CorrelationFilter, RuleDescription } from "./core/managementClient";
 import { SessionReceiverOptions } from "./session/messageSession";
-import { throwErrorIfConnectionClosed } from "./util/utils";
-import { AmqpError, generate_uuid } from "rhea-promise";
-import { ClientEntityContext } from "./clientEntityContext";
+import {
+  getOpenReceiverErrorMsg,
+  throwErrorIfClientOrConnectionClosed,
+  throwErrorIfConnectionClosed,
+  throwTypeErrorIfParameterMissing
+} from "./util/utils";
 
 /**
  * Describes the client that allows interacting with a Service Bus Subscription.
@@ -68,7 +78,7 @@ export class SubscriptionClient implements Client {
 
     this.entityPath = `${topicName}/Subscriptions/${subscriptionName}`;
     this.id = `${this.entityPath}/${generate_uuid()}`;
-    this._context = ClientEntityContext.create(this.entityPath, context);
+    this._context = ClientEntityContext.create(this.entityPath, "SubscriptionClient", context);
 
     this.topicName = topicName;
     this.subscriptionName = subscriptionName;
@@ -187,7 +197,7 @@ export class SubscriptionClient implements Client {
     receiveMode: ReceiveMode,
     sessionOptions?: SessionReceiverOptions
   ): Receiver | SessionReceiver {
-    this._throwErrorIfClientOrConnectionClosed();
+    throwErrorIfClientOrConnectionClosed(this._context.namespace, this.entityPath, this._isClosed);
 
     // Receiver for Subscription where sessions are not enabled
     if (!sessionOptions) {
@@ -195,24 +205,9 @@ export class SubscriptionClient implements Client {
         this._currentReceiver = new Receiver(this._context, receiveMode);
         return this._currentReceiver;
       }
-      throw new Error(
-        "An open receiver already exists on this SubscriptionClient. Please close it and try" +
-          " again or use a new SubscriptionClient instance"
-      );
-    }
-
-    // Check if receiver for given session already exists
-    if (sessionOptions.sessionId) {
-      if (
-        this._context.messageSessions[sessionOptions.sessionId] &&
-        this._context.messageSessions[sessionOptions.sessionId].isOpen()
-      ) {
-        throw new Error(
-          `An open receiver already exists for sessionId '${
-            sessionOptions.sessionId
-          }'. Please close it and try again.`
-        );
-      }
+      const errorMessage = getOpenReceiverErrorMsg("SubscriptionClient", this.entityPath);
+      log.error(`[${this._context.namespace.connectionId}] ${errorMessage}`);
+      throw new Error(errorMessage);
     }
 
     return new SessionReceiver(this._context, receiveMode, sessionOptions);
@@ -230,7 +225,7 @@ export class SubscriptionClient implements Client {
    * @returns Promise<ReceivedSBMessage[]>
    */
   async peek(maxMessageCount?: number): Promise<ReceivedMessageInfo[]> {
-    this._throwErrorIfClientOrConnectionClosed();
+    throwErrorIfClientOrConnectionClosed(this._context.namespace, this.entityPath, this._isClosed);
     return this._context.managementClient!.peek(maxMessageCount);
   }
 
@@ -249,10 +244,11 @@ export class SubscriptionClient implements Client {
     fromSequenceNumber: Long,
     maxMessageCount?: number
   ): Promise<ReceivedMessageInfo[]> {
-    this._throwErrorIfClientOrConnectionClosed();
-    return this._context.managementClient!.peekBySequenceNumber(fromSequenceNumber, {
-      messageCount: maxMessageCount
-    });
+    throwErrorIfClientOrConnectionClosed(this._context.namespace, this.entityPath, this._isClosed);
+    return this._context.managementClient!.peekBySequenceNumber(
+      fromSequenceNumber,
+      maxMessageCount
+    );
   }
 
   //#region topic-filters
@@ -261,7 +257,7 @@ export class SubscriptionClient implements Client {
    * Get all the rules associated with the subscription
    */
   async getRules(): Promise<RuleDescription[]> {
-    this._throwErrorIfClientOrConnectionClosed();
+    throwErrorIfClientOrConnectionClosed(this._context.namespace, this.entityPath, this._isClosed);
     return this._context.managementClient!.getRules();
   }
 
@@ -270,7 +266,9 @@ export class SubscriptionClient implements Client {
    * @param ruleName
    */
   async removeRule(ruleName: string): Promise<void> {
-    this._throwErrorIfClientOrConnectionClosed();
+    throwErrorIfClientOrConnectionClosed(this._context.namespace, this.entityPath, this._isClosed);
+    throwTypeErrorIfParameterMissing(this._context.namespace.connectionId, "ruleName", ruleName);
+    ruleName = ruleName.toString();
     return this._context.managementClient!.removeRule(ruleName);
   }
 
@@ -290,7 +288,38 @@ export class SubscriptionClient implements Client {
     filter: boolean | string | CorrelationFilter,
     sqlRuleActionExpression?: string
   ): Promise<void> {
-    this._throwErrorIfClientOrConnectionClosed();
+    throwErrorIfClientOrConnectionClosed(this._context.namespace, this.entityPath, this._isClosed);
+
+    // Type check ruleName
+    throwTypeErrorIfParameterMissing(this._context.namespace.connectionId, "ruleName", ruleName);
+    ruleName = ruleName.toString();
+
+    // Type check filter
+    throwTypeErrorIfParameterMissing(this._context.namespace.connectionId, "filter", filter);
+    if (typeof filter !== "boolean" && typeof filter !== "string") {
+      let filterTypeErrorMessage: string = "";
+      const filterProperties = Object.keys(filter);
+      if (!filterProperties.length) {
+        filterTypeErrorMessage = `The parameter "filter" should be either a boolean, string or should have one of the Correlation filter properties.`;
+      }
+      for (let i = 0; i < filterProperties.length; i++) {
+        const filterProperty = filterProperties[i];
+        if (validCorrelationProperties.indexOf(filterProperty) === -1) {
+          filterTypeErrorMessage = `The parameter "filter" has unexpected property "${filterProperty}".`;
+        }
+      }
+      if (filterTypeErrorMessage) {
+        const error = new TypeError(filterTypeErrorMessage);
+        log.error(`[${this._context.namespace.connectionId}] ${error}`);
+        throw error;
+      }
+    }
+
+    // Type check sqlRuleActionExpression
+    if (sqlRuleActionExpression) {
+      sqlRuleActionExpression = sqlRuleActionExpression.toString();
+    }
+
     return this._context.managementClient!.addRule(ruleName, filter, sqlRuleActionExpression);
   }
 
@@ -317,15 +346,4 @@ export class SubscriptionClient implements Client {
   // }
 
   //#endregion
-
-  /**
-   * Throws error if this subscriptionClient has been closed
-   * @param client
-   */
-  private _throwErrorIfClientOrConnectionClosed(): void {
-    throwErrorIfConnectionClosed(this._context.namespace);
-    if (this._isClosed) {
-      throw new Error("The subscriptionClient has been closed and can no longer be used.");
-    }
-  }
 }

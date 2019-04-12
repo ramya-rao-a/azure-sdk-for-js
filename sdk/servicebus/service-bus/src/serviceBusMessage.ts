@@ -1,18 +1,18 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+import { AmqpMessage, Constants } from "@azure/amqp-common";
 import Long from "long";
 import {
-  Delivery,
-  uuid_to_string,
   AmqpError,
+  Delivery,
+  DeliveryAnnotations,
   MessageAnnotations,
-  DeliveryAnnotations
+  uuid_to_string
 } from "rhea-promise";
-import { Constants, AmqpMessage } from "@azure/amqp-common";
-import * as log from "./log";
-import { ClientEntityContext } from "./clientEntityContext";
 import { reorderLockToken } from "../src/util/utils";
+import { ClientEntityContext } from "./clientEntityContext";
+import * as log from "./log";
 
 /**
  * The mode in which messages should be received
@@ -240,107 +240,107 @@ export module SendableMessageInfo {
   /**
    * @ignore
    */
-  export function validate(msg: SendableMessageInfo): void {
-    if (!msg) {
-      throw new Error("'msg' cannot be null or undefined.");
+  export function validate(message: SendableMessageInfo): void {
+    if (!message) {
+      throw new TypeError("'sequenceNumbers' cannot be null or undefined.");
     }
 
-    if (msg.contentType != undefined && typeof msg.contentType !== "string") {
-      throw new Error("'contentType' must be of type 'string'.");
+    if (message.contentType != undefined && typeof message.contentType !== "string") {
+      throw new TypeError("'contentType' must be of type 'string'.");
     }
 
-    if (msg.label != undefined && typeof msg.label !== "string") {
-      throw new Error("'label' must be of type 'string'.");
+    if (message.label != undefined && typeof message.label !== "string") {
+      throw new TypeError("'label' must be of type 'string'.");
     }
 
-    if (msg.to != undefined && typeof msg.to !== "string") {
-      throw new Error("'to' must be of type 'string'.");
+    if (message.to != undefined && typeof message.to !== "string") {
+      throw new TypeError("'to' must be of type 'string'.");
     }
 
-    if (msg.replyToSessionId != undefined && typeof msg.replyToSessionId !== "string") {
-      throw new Error("'replyToSessionId' must be of type 'string'.");
+    if (message.replyToSessionId != undefined && typeof message.replyToSessionId !== "string") {
+      throw new TypeError("'replyToSessionId' must be of type 'string'.");
     }
 
-    if (msg.timeToLive != undefined && typeof msg.timeToLive !== "number") {
-      throw new Error("'timeToLive' must be of type 'number'.");
-    }
-
-    if (
-      msg.scheduledEnqueueTimeUtc &&
-      (!(msg.scheduledEnqueueTimeUtc instanceof Date) ||
-        msg.scheduledEnqueueTimeUtc!.toString() === "Invalid Date")
-    ) {
-      throw new Error("'scheduledEnqueueTimeUtc' must be an instance of a valid 'Date'.");
+    if (message.timeToLive != undefined && typeof message.timeToLive !== "number") {
+      throw new TypeError("'timeToLive' must be of type 'number'.");
     }
 
     if (
-      (msg.partitionKey != undefined && typeof msg.partitionKey !== "string") ||
-      (typeof msg.partitionKey === "string" &&
-        msg.partitionKey.length > Constants.maxPartitionKeyLength)
+      message.scheduledEnqueueTimeUtc &&
+      (!(message.scheduledEnqueueTimeUtc instanceof Date) ||
+        message.scheduledEnqueueTimeUtc!.toString() === "Invalid Date")
     ) {
-      throw new Error(
+      throw new TypeError("'scheduledEnqueueTimeUtc' must be an instance of a valid 'Date'.");
+    }
+
+    if (
+      (message.partitionKey != undefined && typeof message.partitionKey !== "string") ||
+      (typeof message.partitionKey === "string" &&
+        message.partitionKey.length > Constants.maxPartitionKeyLength)
+    ) {
+      throw new TypeError(
         "'partitionKey' must be of type 'string' with a length less than 128 characters."
       );
     }
 
     if (
-      (msg.viaPartitionKey != undefined && typeof msg.viaPartitionKey !== "string") ||
-      (typeof msg.viaPartitionKey === "string" &&
-        msg.viaPartitionKey.length > Constants.maxPartitionKeyLength)
+      (message.viaPartitionKey != undefined && typeof message.viaPartitionKey !== "string") ||
+      (typeof message.viaPartitionKey === "string" &&
+        message.viaPartitionKey.length > Constants.maxPartitionKeyLength)
     ) {
-      throw new Error(
+      throw new TypeError(
         "'viaPartitionKey' must be of type 'string' with a length less than 128 characters."
       );
     }
 
-    if (msg.sessionId != undefined && typeof msg.sessionId !== "string") {
-      throw new Error("'sessionId' must be of type 'string'.");
+    if (message.sessionId != undefined && typeof message.sessionId !== "string") {
+      throw new TypeError("'sessionId' must be of type 'string'.");
     }
 
     if (
-      msg.sessionId != undefined &&
-      typeof msg.sessionId === "string" &&
-      msg.sessionId.length > Constants.maxSessionIdLength
+      message.sessionId != undefined &&
+      typeof message.sessionId === "string" &&
+      message.sessionId.length > Constants.maxSessionIdLength
     ) {
-      throw new Error(
+      throw new TypeError(
         "Length of 'sessionId' of type 'string' cannot be greater than 128 characters."
       );
     }
 
     if (
-      msg.messageId != undefined &&
-      typeof msg.messageId !== "string" &&
-      typeof msg.messageId !== "number" &&
-      !Buffer.isBuffer(msg.messageId)
+      message.messageId != undefined &&
+      typeof message.messageId !== "string" &&
+      typeof message.messageId !== "number" &&
+      !Buffer.isBuffer(message.messageId)
     ) {
-      throw new Error("'messageId' must be of type 'string' | 'number' | Buffer.");
+      throw new TypeError("'messageId' must be of type 'string' | 'number' | Buffer.");
     }
 
     if (
-      msg.messageId &&
-      typeof msg.messageId === "number" &&
-      Math.floor(msg.messageId) !== msg.messageId
+      message.messageId &&
+      typeof message.messageId === "number" &&
+      Math.floor(message.messageId) !== message.messageId
     ) {
-      throw new Error("'messageId' must be a whole integer. Decimal points are not allowed.");
+      throw new TypeError("'messageId' must be a whole integer. Decimal points are not allowed.");
     }
 
     if (
-      msg.messageId != undefined &&
-      typeof msg.messageId === "string" &&
-      msg.messageId.length > Constants.maxMessageIdLength
+      message.messageId != undefined &&
+      typeof message.messageId === "string" &&
+      message.messageId.length > Constants.maxMessageIdLength
     ) {
-      throw new Error(
+      throw new TypeError(
         "Length of 'messageId' of type 'string' cannot be greater than 128 characters."
       );
     }
 
     if (
-      msg.correlationId != undefined &&
-      typeof msg.correlationId !== "string" &&
-      typeof msg.correlationId !== "number" &&
-      !Buffer.isBuffer(msg.correlationId)
+      message.correlationId != undefined &&
+      typeof message.correlationId !== "string" &&
+      typeof message.correlationId !== "number" &&
+      !Buffer.isBuffer(message.correlationId)
     ) {
-      throw new Error("'correlationId' must be of type 'string' | 'number' | Buffer.");
+      throw new TypeError("'correlationId' must be of type 'string' | 'number' | Buffer.");
     }
   }
 
@@ -553,19 +553,19 @@ export module ReceivedMessageInfo {
   export function validate(msg: ReceivedMessageInfo): void {
     SendableMessageInfo.validate(msg);
     if (msg.lockToken != undefined && typeof msg.lockToken !== "string") {
-      throw new Error("'lockToken' must be of type 'string'.");
+      throw new TypeError("'lockToken' must be of type 'string'.");
     }
 
     if (msg.deliveryCount != undefined && typeof msg.deliveryCount !== "number") {
-      throw new Error("'deliveryCount' must be of type 'number'.");
+      throw new TypeError("'deliveryCount' must be of type 'number'.");
     }
 
     if (msg.sequenceNumber != undefined && !Long.isLong(msg.sequenceNumber)) {
-      throw new Error("'sequenceNumber' must be an instance of 'Long' .");
+      throw new TypeError("'sequenceNumber' must be an instance of 'Long' .");
     }
 
     if (msg.enqueuedSequenceNumber != undefined && typeof msg.enqueuedSequenceNumber !== "number") {
-      throw new Error("'enqueuedSequenceNumber' must be of type 'number'.");
+      throw new TypeError("'enqueuedSequenceNumber' must be of type 'number'.");
     }
 
     if (
@@ -573,7 +573,7 @@ export module ReceivedMessageInfo {
       !(msg.enqueuedTimeUtc instanceof Date) &&
       msg.enqueuedTimeUtc!.toString() === "Invalid Date"
     ) {
-      throw new Error("'enqueuedTimeUtc' must be an instance of a valid 'Date'.");
+      throw new TypeError("'enqueuedTimeUtc' must be an instance of a valid 'Date'.");
     }
 
     if (
@@ -581,7 +581,7 @@ export module ReceivedMessageInfo {
       !(msg.expiresAtUtc instanceof Date) &&
       msg.expiresAtUtc!.toString() === "Invalid Date"
     ) {
-      throw new Error("'expiresAtUtc' must be an instance of a valid 'Date'.");
+      throw new TypeError("'expiresAtUtc' must be an instance of a valid 'Date'.");
     }
 
     if (
@@ -589,7 +589,7 @@ export module ReceivedMessageInfo {
       !(msg.lockedUntilUtc instanceof Date) &&
       msg.lockedUntilUtc!.toString() === "Invalid Date"
     ) {
-      throw new Error("'lockedUntilUtc' must be an instance of a valid 'Date'.");
+      throw new TypeError("'lockedUntilUtc' must be an instance of a valid 'Date'.");
     }
   }
 
