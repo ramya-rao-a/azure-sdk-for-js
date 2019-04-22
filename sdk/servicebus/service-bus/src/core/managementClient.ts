@@ -28,7 +28,8 @@ import {
   ServiceBusMessage,
   SendableMessageInfo,
   DispositionStatus,
-  toAmqpMessage
+  toAmqpMessage,
+  validateAmqpMessage
 } from "../serviceBusMessage";
 import { LinkEntity } from "./linkEntity";
 import * as log from "../log";
@@ -441,6 +442,8 @@ export class ManagementClient extends LinkEntity {
       const item = messages[i];
       if (!item.messageId) item.messageId = generate_uuid();
       item.scheduledEnqueueTimeUtc = scheduledEnqueueTimeUtc;
+
+      validateAmqpMessage(item);
       const amqpMessage = toAmqpMessage(item);
 
       try {

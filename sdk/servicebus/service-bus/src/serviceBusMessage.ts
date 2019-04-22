@@ -255,6 +255,10 @@ export function validateAmqpMessage(msg: SendableMessageInfo): void {
     throw new Error("'to' must be of type 'string'.");
   }
 
+  if (msg.replyTo != undefined && typeof msg.replyTo !== "string") {
+    throw new Error("'replyTo' must be of type 'string'.");
+  }
+
   if (msg.replyToSessionId != undefined && typeof msg.replyToSessionId !== "string") {
     throw new Error("'replyToSessionId' must be of type 'string'.");
   }
@@ -347,7 +351,6 @@ export function validateAmqpMessage(msg: SendableMessageInfo): void {
  * Converts given SendableMessageInfo to AmqpMessage
  */
 export function toAmqpMessage(msg: SendableMessageInfo): AmqpMessage {
-  validateAmqpMessage(msg);
   const amqpMsg: AmqpMessage = {
     body: msg.body,
     message_annotations: {}
