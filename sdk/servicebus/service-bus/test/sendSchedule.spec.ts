@@ -659,7 +659,7 @@ describe("SendableMessageInfo validations", function(): void {
     }
   ];
 
-  testInputs.forEach(function(testInput) {
+  testInputs.forEach(function(testInput: any): void {
     it("Send() throws if " + testInput.title, async function(): Promise<void> {
       let actualErrorMsg = "";
       await sender.send(testInput.message).catch((err) => {
