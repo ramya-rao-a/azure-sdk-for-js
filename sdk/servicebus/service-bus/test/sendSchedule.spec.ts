@@ -595,66 +595,68 @@ describe("SendableMessageInfo validations", function(): void {
   }[] = [
     {
       message: { body: "", contentType: 1 as any },
-      expectedErrorMessage: "'contentType' must be of type 'string'.",
+      expectedErrorMessage: "The property 'contentType' on the message must be of type 'string'",
       title: "contenType is of invalid type"
     },
     {
       message: { body: "", label: 1 as any },
-      expectedErrorMessage: "'label' must be of type 'string'.",
+      expectedErrorMessage: "The property 'label' on the message must be of type 'string'",
       title: "label is of invalid type"
     },
     {
       message: { body: "", to: 1 as any },
-      expectedErrorMessage: "'to' must be of type 'string'.",
+      expectedErrorMessage: "The property 'to' on the message must be of type 'string'",
       title: "to is of invalid type"
     },
     {
       message: { body: "", replyToSessionId: 1 as any },
-      expectedErrorMessage: "'replyToSessionId' must be of type 'string'.",
+      expectedErrorMessage:
+        "The property 'replyToSessionId' on the message must be of type 'string'",
       title: "replyToSessionId is of invalid type"
     },
     {
       message: { body: "", sessionId: 1 as any },
-      expectedErrorMessage: "'sessionId' must be of type 'string'.",
+      expectedErrorMessage: "The property 'sessionId' on the message must be of type 'string'",
       title: "sessionId is of invalid type"
     },
     {
       message: { body: "", replyTo: 1 as any },
-      expectedErrorMessage: "'replyTo' must be of type 'string'.",
+      expectedErrorMessage: "The property 'replyTo' on the message must be of type 'string'",
       title: "replyTo is of invalid type"
     },
     {
       message: { body: "", timeToLive: "" as any },
-      expectedErrorMessage: "'timeToLive' must be of type 'number'.",
+      expectedErrorMessage: "The property 'timeToLive' on the message must be of type 'number'",
       title: "timeToLive is of invalid type"
     },
     {
       message: { body: "", partitionKey: longString },
       expectedErrorMessage:
-        "'partitionKey' must be of type 'string' with a length less than 128 characters.",
+        "Length of 'partitionKey' property on the message cannot be greater than 128 characters.",
       title: "partitionKey is longer than 128 characters"
     },
     {
       message: { body: "", viaPartitionKey: longString },
       expectedErrorMessage:
-        "'viaPartitionKey' must be of type 'string' with a length less than 128 characters.",
+        "Length of 'viaPartitionKey' property on the message cannot be greater than 128 characters.",
       title: "viaPartitionKey is longer than 128 characters"
     },
     {
       message: { body: "", sessionId: longString },
       expectedErrorMessage:
-        "Length of 'sessionId' of type 'string' cannot be greater than 128 characters.",
+        "Length of 'sessionId' property on the message cannot be greater than 128 characters.",
       title: "sessionId is longer than 128 characters"
     },
     {
       message: { body: "", messageId: longString },
       expectedErrorMessage:
-        "Length of 'messageId' of type 'string' cannot be greater than 128 characters.",
+        "Length of 'messageId' property on the message cannot be greater than 128 characters.",
       title: "messageId is longer than 128 characters"
     },
     {
       message: { body: "", correlationId: [] as any },
-      expectedErrorMessage: "'correlationId' must be of type 'string' | 'number' | Buffer.",
+      expectedErrorMessage:
+        "The property 'correlationId' on the message must be of type 'string, number or Buffer'",
       title: "correlationId is of invalid type"
     }
   ];

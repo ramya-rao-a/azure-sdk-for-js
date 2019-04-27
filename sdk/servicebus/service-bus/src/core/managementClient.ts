@@ -444,7 +444,6 @@ export class ManagementClient extends LinkEntity {
       if (!item.messageId) item.messageId = generate_uuid();
       item.scheduledEnqueueTimeUtc = scheduledEnqueueTimeUtc;
 
-      validateAmqpMessage(item);
       const amqpMessage = toAmqpMessage(item);
 
       try {
@@ -465,6 +464,15 @@ export class ManagementClient extends LinkEntity {
         const wrappedEntry = types.wrap_map(entry);
         messageBody.push(wrappedEntry);
       } catch (err) {
+        // Send could have failed due to invalid properties on the message
+        // Since we skip validating them before sending to avoid extra cycles on critical path,
+        // validate now to provide better error message to user
+        try {
+          validateAmqpMessage(item);
+        } catch (validationError) {
+          err = validationError;
+        }
+
         const error = translate(err);
         log.error(
           "An error occurred while encoding the item at position %d in the messages array" + ": %O",

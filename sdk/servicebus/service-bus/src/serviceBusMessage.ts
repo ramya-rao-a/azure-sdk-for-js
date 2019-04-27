@@ -13,7 +13,10 @@ import { Constants, AmqpMessage } from "@azure/amqp-common";
 import * as log from "./log";
 import { ClientEntityContext } from "./clientEntityContext";
 import { reorderLockToken } from "../src/util/utils";
-import { throwIfMessageCannotBeSettled } from "../src/util/errors";
+import {
+  throwIfMessageCannotBeSettled,
+  throwMessagePropertyTypeMismatchError
+} from "../src/util/errors";
 
 /**
  * The mode in which messages should be received. The 2 modes are `peekLock` and `receiveAndDelete`.
@@ -244,74 +247,40 @@ export interface SendableMessageInfo {
  * Validates the properties in the given SendableMessageInfo
  */
 export function validateAmqpMessage(msg: SendableMessageInfo): void {
-  if (!msg) {
-    throw new Error("'msg' cannot be null or undefined.");
-  }
-
   if (msg.contentType != undefined && typeof msg.contentType !== "string") {
-    throw new Error("'contentType' must be of type 'string'.");
+    throwMessagePropertyTypeMismatchError("contentType", "string");
   }
 
   if (msg.label != undefined && typeof msg.label !== "string") {
-    throw new Error("'label' must be of type 'string'.");
+    throwMessagePropertyTypeMismatchError("label", "string");
   }
 
   if (msg.to != undefined && typeof msg.to !== "string") {
-    throw new Error("'to' must be of type 'string'.");
+    throwMessagePropertyTypeMismatchError("to", "string");
   }
 
   if (msg.replyTo != undefined && typeof msg.replyTo !== "string") {
-    throw new Error("'replyTo' must be of type 'string'.");
+    throwMessagePropertyTypeMismatchError("replyTo", "string");
   }
 
   if (msg.replyToSessionId != undefined && typeof msg.replyToSessionId !== "string") {
-    throw new Error("'replyToSessionId' must be of type 'string'.");
+    throwMessagePropertyTypeMismatchError("replyToSessionId", "string");
   }
 
   if (msg.timeToLive != undefined && typeof msg.timeToLive !== "number") {
-    throw new Error("'timeToLive' must be of type 'number'.");
+    throwMessagePropertyTypeMismatchError("timeToLive", "number");
   }
 
-  if (
-    msg.scheduledEnqueueTimeUtc &&
-    (!(msg.scheduledEnqueueTimeUtc instanceof Date) ||
-      msg.scheduledEnqueueTimeUtc!.toString() === "Invalid Date")
-  ) {
-    throw new Error("'scheduledEnqueueTimeUtc' must be an instance of a valid 'Date'.");
+  if (msg.partitionKey != undefined && typeof msg.partitionKey !== "string") {
+    throwMessagePropertyTypeMismatchError("partitionKey", "string");
   }
 
-  if (
-    (msg.partitionKey != undefined && typeof msg.partitionKey !== "string") ||
-    (typeof msg.partitionKey === "string" &&
-      msg.partitionKey.length > Constants.maxPartitionKeyLength)
-  ) {
-    throw new Error(
-      "'partitionKey' must be of type 'string' with a length less than 128 characters."
-    );
-  }
-
-  if (
-    (msg.viaPartitionKey != undefined && typeof msg.viaPartitionKey !== "string") ||
-    (typeof msg.viaPartitionKey === "string" &&
-      msg.viaPartitionKey.length > Constants.maxPartitionKeyLength)
-  ) {
-    throw new Error(
-      "'viaPartitionKey' must be of type 'string' with a length less than 128 characters."
-    );
+  if (msg.viaPartitionKey != undefined && typeof msg.viaPartitionKey !== "string") {
+    throwMessagePropertyTypeMismatchError("viaPartitionKey", "string");
   }
 
   if (msg.sessionId != undefined && typeof msg.sessionId !== "string") {
-    throw new Error("'sessionId' must be of type 'string'.");
-  }
-
-  if (
-    msg.sessionId != undefined &&
-    typeof msg.sessionId === "string" &&
-    msg.sessionId.length > Constants.maxSessionIdLength
-  ) {
-    throw new Error(
-      "Length of 'sessionId' of type 'string' cannot be greater than 128 characters."
-    );
+    throwMessagePropertyTypeMismatchError("sessionId", "string");
   }
 
   if (
@@ -320,25 +289,7 @@ export function validateAmqpMessage(msg: SendableMessageInfo): void {
     typeof msg.messageId !== "number" &&
     !Buffer.isBuffer(msg.messageId)
   ) {
-    throw new Error("'messageId' must be of type 'string' | 'number' | Buffer.");
-  }
-
-  if (
-    msg.messageId &&
-    typeof msg.messageId === "number" &&
-    Math.floor(msg.messageId) !== msg.messageId
-  ) {
-    throw new Error("'messageId' must be a whole integer. Decimal points are not allowed.");
-  }
-
-  if (
-    msg.messageId != undefined &&
-    typeof msg.messageId === "string" &&
-    msg.messageId.length > Constants.maxMessageIdLength
-  ) {
-    throw new Error(
-      "Length of 'messageId' of type 'string' cannot be greater than 128 characters."
-    );
+    throwMessagePropertyTypeMismatchError("messageId", "string, number or Buffer");
   }
 
   if (
@@ -347,7 +298,7 @@ export function validateAmqpMessage(msg: SendableMessageInfo): void {
     typeof msg.correlationId !== "number" &&
     !Buffer.isBuffer(msg.correlationId)
   ) {
-    throw new Error("'correlationId' must be of type 'string' | 'number' | Buffer.");
+    throwMessagePropertyTypeMismatchError("correlationId", "string, number or Buffer");
   }
 }
 
@@ -367,6 +318,11 @@ export function toAmqpMessage(msg: SendableMessageInfo): AmqpMessage {
     amqpMsg.content_type = msg.contentType;
   }
   if (msg.sessionId != undefined) {
+    if (msg.sessionId.length > Constants.maxSessionIdLength) {
+      throw new Error(
+        "Length of 'sessionId' property on the message cannot be greater than 128 characters."
+      );
+    }
     amqpMsg.group_id = msg.sessionId;
   }
   if (msg.replyTo != undefined) {
@@ -379,6 +335,14 @@ export function toAmqpMessage(msg: SendableMessageInfo): AmqpMessage {
     amqpMsg.subject = msg.label;
   }
   if (msg.messageId != undefined) {
+    if (
+      typeof msg.messageId === "string" &&
+      msg.messageId.length > Constants.maxPartitionKeyLength
+    ) {
+      throw new Error(
+        "Length of 'messageId' property on the message cannot be greater than 128 characters."
+      );
+    }
     amqpMsg.message_id = msg.messageId;
   }
   if (msg.correlationId != undefined) {
@@ -397,9 +361,19 @@ export function toAmqpMessage(msg: SendableMessageInfo): AmqpMessage {
     }
   }
   if (msg.partitionKey != undefined) {
+    if (msg.partitionKey.length > Constants.maxPartitionKeyLength) {
+      throw new Error(
+        "Length of 'partitionKey' property on the message cannot be greater than 128 characters."
+      );
+    }
     amqpMsg.message_annotations![Constants.partitionKey] = msg.partitionKey;
   }
   if (msg.viaPartitionKey != undefined) {
+    if (msg.viaPartitionKey.length > Constants.maxPartitionKeyLength) {
+      throw new Error(
+        "Length of 'viaPartitionKey' property on the message cannot be greater than 128 characters."
+      );
+    }
     amqpMsg.message_annotations![Constants.viaPartitionKey] = msg.viaPartitionKey;
   }
   if (msg.scheduledEnqueueTimeUtc != undefined) {

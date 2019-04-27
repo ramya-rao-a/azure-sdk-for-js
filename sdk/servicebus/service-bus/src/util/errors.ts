@@ -288,3 +288,17 @@ export function throwIfMessageCannotBeSettled(
 export function getErrorMessageNotSupportedInReceiveAndDeleteMode(failedToDo: string): string {
   return `Failed to ${failedToDo} as the operation is only supported in 'PeekLock' recieve mode.`;
 }
+
+/**
+ * Logs and throws an error that given property does not have expected type on the message
+ */
+export function throwMessagePropertyTypeMismatchError(
+  propertyName: string,
+  expectedType: string
+): string {
+  const error = new TypeError(
+    `The property '${propertyName}' on the message must be of type '${expectedType}'`
+  );
+  log.error("%O", error);
+  throw error;
+}
