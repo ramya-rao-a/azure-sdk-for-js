@@ -30,7 +30,7 @@ export class BatchingReceiver extends MessageReceiver {
   isReceivingMessages: boolean = false;
 
   /**
-   * @property {AmqpError | Error | undefined} connectionError Error that occured when receiver
+   * @property {AmqpError | Error | undefined} detachedError Error that occured when receiver
    * got detached. Not applicable when onReceiveError is called.
    *  Default: undefined.
    */
