@@ -388,9 +388,7 @@ export class SessionReceiver {
    * @readonly
    */
   public get isClosed(): boolean {
-    return (
-      this._isClosed || (this.sessionId ? !this._context.messageSessions[this.sessionId] : false)
-    );
+    return this._isClosed || this._context.isClosed;
   }
 
   /**
@@ -743,7 +741,7 @@ export class SessionReceiver {
   }
 
   private async _createMessageSessionIfDoesntExist(): Promise<void> {
-    if (this._messageSession) {
+    if (this._messageSession && this._messageSession.isOpen()) {
       return;
     }
     this._context.isSessionEnabled = true;
