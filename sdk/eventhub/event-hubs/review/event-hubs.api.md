@@ -60,7 +60,7 @@ export class EventHubClient {
     static createFromIotHubConnectionString(iothubConnectionString: string, options?: EventHubClientOptions): Promise<EventHubClient>;
     createReceiver(partitionId: string, options?: EventReceiverOptions): EventReceiver;
     createSender(options?: EventSenderOptions): EventSender;
-    readonly eventHubName: string;
+    readonly eventhubName: string;
     getPartitionIds(abortSignal?: AbortSignal): Promise<Array<string>>;
     getPartitionInformation(partitionId: string, abortSignal?: AbortSignal): Promise<PartitionProperties>;
     getProperties(abortSignal?: AbortSignal): Promise<EventHubProperties>;
@@ -160,11 +160,11 @@ export type OnMessage = (eventData: ReceivedEventData) => void;
 // @public
 export interface PartitionProperties {
     beginningSequenceNumber: number;
-    eventHubPath: string;
-    id: string;
+    hubPath: string;
     lastEnqueuedOffset: string;
-    lastEnqueuedSequenceNumber: number;
     lastEnqueuedTimeUtc: Date;
+    lastSequenceNumber: number;
+    partitionId: string;
 }
 
 // @public

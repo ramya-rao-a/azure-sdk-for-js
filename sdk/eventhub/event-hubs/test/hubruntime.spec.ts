@@ -56,10 +56,10 @@ describe("RuntimeInformation #RunnableInBrowser", function(): void {
     client = EventHubClient.createFromConnectionString(service.connectionString!, service.path);
     const partitionRuntimeInfo = await client.getPartitionInformation("0");
     debug(partitionRuntimeInfo);
-    partitionRuntimeInfo.id.should.equal("0");
-    partitionRuntimeInfo.eventHubPath.should.equal(service.path);
+    partitionRuntimeInfo.partitionId.should.equal("0");
+    partitionRuntimeInfo.hubPath.should.equal(service.path);
     partitionRuntimeInfo.lastEnqueuedTimeUtc.should.be.instanceof(Date);
-    should.exist(partitionRuntimeInfo.lastEnqueuedSequenceNumber);
+    should.exist(partitionRuntimeInfo.lastSequenceNumber);
     should.exist(partitionRuntimeInfo.lastEnqueuedOffset);
   });
 
@@ -67,10 +67,10 @@ describe("RuntimeInformation #RunnableInBrowser", function(): void {
     client = EventHubClient.createFromConnectionString(service.connectionString!, service.path);
     const partitionRuntimeInfo = await client.getPartitionInformation(0 as any);
     debug(partitionRuntimeInfo);
-    partitionRuntimeInfo.id.should.equal("0");
-    partitionRuntimeInfo.eventHubPath.should.equal(service.path);
+    partitionRuntimeInfo.partitionId.should.equal("0");
+    partitionRuntimeInfo.hubPath.should.equal(service.path);
     partitionRuntimeInfo.lastEnqueuedTimeUtc.should.be.instanceof(Date);
-    should.exist(partitionRuntimeInfo.lastEnqueuedSequenceNumber);
+    should.exist(partitionRuntimeInfo.lastSequenceNumber);
     should.exist(partitionRuntimeInfo.lastEnqueuedOffset);
   });
 

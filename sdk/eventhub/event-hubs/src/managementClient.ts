@@ -36,11 +36,11 @@ export interface PartitionProperties {
   /**
    * @property {string} hubPath - The name of the eventhub.
    */
-  eventHubPath: string;
+  hubPath: string;
   /**
    * @property {string} partitionId - Identifier of the partition within the eventhub.
    */
-  id: string;
+  partitionId: string;
   /**
    * @property {number} beginningSequenceNumber - The starting sequence number of the partition's message log.
    */
@@ -48,7 +48,7 @@ export interface PartitionProperties {
   /**
    * @property {number} lastSequenceNumber - The last sequence number of the partition's message log.
    */
-  lastEnqueuedSequenceNumber: number;
+  lastSequenceNumber: number;
   /**
    * @property {string} lastEnqueuedOffset - The offset of the last enqueued message in the partition's message log.
    */
@@ -171,11 +171,11 @@ export class ManagementClient extends LinkEntity {
     const info: any = await this._makeManagementRequest(request, options);
     const partitionInfo: PartitionProperties = {
       beginningSequenceNumber: info.begin_sequence_number,
-      eventHubPath: info.name,
+      hubPath: info.name,
       lastEnqueuedOffset: info.last_enqueued_offset,
       lastEnqueuedTimeUtc: new Date(info.last_enqueued_time_utc),
-      lastEnqueuedSequenceNumber: info.last_enqueued_sequence_number,
-      id: info.partition
+      lastSequenceNumber: info.last_enqueued_sequence_number,
+      partitionId: info.partition
     };
     log.mgmt("[%s] The partition info is: %O.", this._context.connectionId, partitionInfo);
     return partitionInfo;

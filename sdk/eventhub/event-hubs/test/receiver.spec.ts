@@ -227,7 +227,7 @@ describe("EventHub Receiver", function(): void {
       // send a new message. We should only receive this new message.
       const uid = uuid();
       const ed: EventData = {
-        body: "New message after last enqueued sequence number " + pInfo.lastEnqueuedSequenceNumber,
+        body: "New message after last enqueued sequence number " + pInfo.lastSequenceNumber,
         properties: {
           stamp: uid
         }
@@ -236,9 +236,9 @@ describe("EventHub Receiver", function(): void {
       debug(
         "Sent the new message after getting the partition runtime information. We should only receive this message."
       );
-      debug(`Creating new receiver with last enqueued sequence number: "${pInfo.lastEnqueuedSequenceNumber}".`);
+      debug(`Creating new receiver with last enqueued sequence number: "${pInfo.lastSequenceNumber}".`);
       breceiver = BatchingReceiver.create((client as any)._context, partitionId, {
-        beginReceivingAt: EventPosition.fromSequenceNumber(pInfo.lastEnqueuedSequenceNumber)
+        beginReceivingAt: EventPosition.fromSequenceNumber(pInfo.lastSequenceNumber)
       });
       const data = await breceiver.receive(10, 20);
       debug("received messages: ", data);
@@ -272,9 +272,9 @@ describe("EventHub Receiver", function(): void {
       };
       await client.createSender({ partitionId: partitionId }).send([ed2]);
       debug(`Sent message 2 with stamp: ${uid}.`);
-      debug(`Creating new receiver with last sequence number: "${pInfo.lastEnqueuedSequenceNumber}".`);
+      debug(`Creating new receiver with last sequence number: "${pInfo.lastSequenceNumber}".`);
       breceiver = BatchingReceiver.create((client as any)._context, partitionId, {
-        beginReceivingAt: EventPosition.fromSequenceNumber(pInfo.lastEnqueuedSequenceNumber, true)
+        beginReceivingAt: EventPosition.fromSequenceNumber(pInfo.lastSequenceNumber, true)
       });
       debug("We should receive the last 2 messages.");
       const data = await breceiver.receive(10, 30);

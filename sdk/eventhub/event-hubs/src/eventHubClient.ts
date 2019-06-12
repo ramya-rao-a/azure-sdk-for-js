@@ -192,7 +192,7 @@ export class EventHubClient {
    * @readonly
    * The name of the Event Hub instance for which this client is created
    */
-  get eventHubName(): string {
+  get eventhubName(): string {
     return this._context.config.entityPath;
   }
 
