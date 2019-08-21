@@ -22,20 +22,20 @@ import { EnvVarKeys, getEnvVars } from "./utils/testUtils";
 import { EnvironmentCredential } from "@azure/identity";
 const env = getEnvVars();
 
-describe("Create EventHubClient #RunnableInBrowser", function(): void {
-  it("throws when it cannot find the Event Hub path", function(): void {
+describe("Create EventHubClient #RunnableInBrowser", function (): void {
+  it("throws when it cannot find the Event Hub path", function (): void {
     const connectionString = "Endpoint=sb://abc";
-    const test = function(): EventHubClient {
+    const test = function (): EventHubClient {
       return new EventHubClient(connectionString);
     };
     test.should.throw(
       Error,
       `Either provide "path" or the "connectionString": "${connectionString}", ` +
-        `must contain EntityPath="<path-to-the-entity>".`
+      `must contain EntityPath="<path-to-the-entity>".`
     );
   });
 
-  it("creates an EventHubClient from a connection string", function(): void {
+  it("creates an EventHubClient from a connection string", function (): void {
     const client = new EventHubClient(
       "Endpoint=sb://a;SharedAccessKeyName=b;SharedAccessKey=c;EntityPath=my-event-hub-path"
     );
@@ -43,7 +43,16 @@ describe("Create EventHubClient #RunnableInBrowser", function(): void {
     should.equal(client.eventHubName, "my-event-hub-path");
   });
 
-  it("creates an EventHubClient from a connection string and an Event Hub path", function(): void {
+
+  it("creates an EventHubClient from a connection string (factory)", function (): void {
+    const client = EventHubClient.fromConnectionString(
+      "Endpoint=sb://a;SharedAccessKeyName=b;SharedAccessKey=c;EntityPath=my-event-hub-path"
+    );
+    client.should.be.an.instanceof(EventHubClient);
+    should.equal(client.eventHubName, "my-event-hub-path");
+  });
+
+  it("creates an EventHubClient from a connection string and an Event Hub path", function (): void {
     const client = new EventHubClient(
       "Endpoint=sb://a;SharedAccessKeyName=b;SharedAccessKey=c",
       "my-event-hub-path"
@@ -52,7 +61,16 @@ describe("Create EventHubClient #RunnableInBrowser", function(): void {
     should.equal(client.eventHubName, "my-event-hub-path");
   });
 
-  it("creates an EventHubClient from a custom TokenCredential", function(): void {
+  it("creates an EventHubClient from a connection string and an Event Hub path (factory)", function (): void {
+    const client = EventHubClient.fromConnectionString(
+      "Endpoint=sb://a;SharedAccessKeyName=b;SharedAccessKey=c",
+      "my-event-hub-path"
+    );
+    client.should.be.an.instanceof(EventHubClient);
+    should.equal(client.eventHubName, "my-event-hub-path");
+  });
+
+  it("creates an EventHubClient from a custom TokenCredential", function (): void {
     const dummyCredential: TokenCredential = {
       getToken: async () => {
         return {
@@ -66,7 +84,7 @@ describe("Create EventHubClient #RunnableInBrowser", function(): void {
     should.equal(client.eventHubName, "my-event-hub-path");
   });
 
-  it("creates an EventHubClient from an Azure.Identity credential", async function(): Promise<
+  it("creates an EventHubClient from an Azure.Identity credential", async function (): Promise<
     void
   > {
     should.exist(
@@ -99,7 +117,7 @@ describe("Create EventHubClient #RunnableInBrowser", function(): void {
   });
 });
 
-describe("ServiceCommunicationError for non existent namespace", function(): void {
+describe("ServiceCommunicationError for non existent namespace", function (): void {
   let client: EventHubClient;
 
   beforeEach(() => {
@@ -112,7 +130,7 @@ describe("ServiceCommunicationError for non existent namespace", function(): voi
     return client.close();
   });
 
-  it("should throw ServiceCommunicationError while getting hub runtime info", async function(): Promise<
+  it("should throw ServiceCommunicationError while getting hub runtime info", async function (): Promise<
     void
   > {
     try {
@@ -124,7 +142,7 @@ describe("ServiceCommunicationError for non existent namespace", function(): voi
     }
   });
 
-  it("should throw ServiceCommunicationError while getting partition runtime info", async function(): Promise<
+  it("should throw ServiceCommunicationError while getting partition runtime info", async function (): Promise<
     void
   > {
     try {
@@ -136,7 +154,7 @@ describe("ServiceCommunicationError for non existent namespace", function(): voi
     }
   });
 
-  it("should throw ServiceCommunicationError while creating a sender", async function(): Promise<
+  it("should throw ServiceCommunicationError while creating a sender", async function (): Promise<
     void
   > {
     try {
@@ -149,7 +167,7 @@ describe("ServiceCommunicationError for non existent namespace", function(): voi
     }
   });
 
-  it("should throw ServiceCommunicationError while creating a receiver", async function(): Promise<
+  it("should throw ServiceCommunicationError while creating a receiver", async function (): Promise<
     void
   > {
     try {
@@ -167,7 +185,7 @@ describe("ServiceCommunicationError for non existent namespace", function(): voi
   });
 });
 
-describe("MessagingEntityNotFoundError for non existent eventhub", function(): void {
+describe("MessagingEntityNotFoundError for non existent eventhub", function (): void {
   let client: EventHubClient;
 
   beforeEach(() => {
@@ -182,7 +200,7 @@ describe("MessagingEntityNotFoundError for non existent eventhub", function(): v
     return client.close();
   });
 
-  it("should throw MessagingEntityNotFoundError while getting hub runtime info", async function(): Promise<
+  it("should throw MessagingEntityNotFoundError while getting hub runtime info", async function (): Promise<
     void
   > {
     try {
@@ -194,7 +212,7 @@ describe("MessagingEntityNotFoundError for non existent eventhub", function(): v
     }
   });
 
-  it("should throw MessagingEntityNotFoundError while getting partition runtime info", async function(): Promise<
+  it("should throw MessagingEntityNotFoundError while getting partition runtime info", async function (): Promise<
     void
   > {
     try {
@@ -206,7 +224,7 @@ describe("MessagingEntityNotFoundError for non existent eventhub", function(): v
     }
   });
 
-  it("should throw MessagingEntityNotFoundError while creating a sender", async function(): Promise<
+  it("should throw MessagingEntityNotFoundError while creating a sender", async function (): Promise<
     void
   > {
     try {
@@ -219,7 +237,7 @@ describe("MessagingEntityNotFoundError for non existent eventhub", function(): v
     }
   });
 
-  it("should throw MessagingEntityNotFoundError while creating a receiver", async function(): Promise<
+  it("should throw MessagingEntityNotFoundError while creating a receiver", async function (): Promise<
     void
   > {
     try {
@@ -237,7 +255,7 @@ describe("MessagingEntityNotFoundError for non existent eventhub", function(): v
   });
 });
 
-describe("User Agent on EventHubClient on #RunnableInBrowser", function(): void {
+describe("User Agent on EventHubClient on #RunnableInBrowser", function (): void {
   let client: EventHubClient;
 
   beforeEach(() => {
@@ -255,7 +273,7 @@ describe("User Agent on EventHubClient on #RunnableInBrowser", function(): void 
     return client.close();
   });
 
-  it("should correctly populate the default user agent", function(done: Mocha.Done): void {
+  it("should correctly populate the default user agent", function (done: Mocha.Done): void {
     client = new EventHubClient(
       env[EnvVarKeys.EVENTHUB_CONNECTION_STRING],
       env[EnvVarKeys.EVENTHUB_NAME]
@@ -270,7 +288,7 @@ describe("User Agent on EventHubClient on #RunnableInBrowser", function(): void 
     done();
   });
 
-  it("should correctly populate the custom user agent", function(done: Mocha.Done): void {
+  it("should correctly populate the custom user agent", function (done: Mocha.Done): void {
     const customua = "/js-event-processor-host=0.2.0";
 
     client = new EventHubClient(
@@ -292,7 +310,7 @@ describe("User Agent on EventHubClient on #RunnableInBrowser", function(): void 
   });
 });
 
-describe("Errors after close()", function(): void {
+describe("Errors after close()", function (): void {
   let client: EventHubClient;
   let sender: EventHubProducer;
   let receiver: EventHubConsumer;
@@ -389,7 +407,7 @@ describe("Errors after close()", function(): void {
     );
   }
 
-  it("errors after close() on client", async function(): Promise<void> {
+  it("errors after close() on client", async function (): Promise<void> {
     await beforeEachTest("client");
     const expectedErrorMsg = "The underlying AMQP connection is closed.";
 
@@ -457,7 +475,7 @@ describe("Errors after close()", function(): void {
     );
   });
 
-  it("errors after close() on sender", async function(): Promise<void> {
+  it("errors after close() on sender", async function (): Promise<void> {
     const senderErrorMsg =
       `The EventHubProducer for "${client.eventHubName}" has been closed and can no longer be used. ` +
       `Please create a new EventHubProducer using the "createProducer" function on the EventHubClient.`;
@@ -465,7 +483,7 @@ describe("Errors after close()", function(): void {
     await testSender(senderErrorMsg);
   });
 
-  it("errors after close() on receiver", async function(): Promise<void> {
+  it("errors after close() on receiver", async function (): Promise<void> {
     const receiverErrorMsg =
       `The EventHubConsumer for "${client.eventHubName}" has been closed and can no longer be used. ` +
       `Please create a new EventHubConsumer using the "createConsumer" function on the EventHubClient.`;
