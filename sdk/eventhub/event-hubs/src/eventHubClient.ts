@@ -27,9 +27,9 @@ import { throwTypeErrorIfParameterMissing, throwErrorIfConnectionClosed } from "
 export function getRetryAttemptTimeoutInMs(retryOptions: RetryOptions | undefined): number {
   const timeoutInMs =
     retryOptions == undefined ||
-      typeof retryOptions.timeoutInMs !== "number" ||
-      !isFinite(retryOptions.timeoutInMs) ||
-      retryOptions.timeoutInMs < Constants.defaultOperationTimeoutInMs
+    typeof retryOptions.timeoutInMs !== "number" ||
+    !isFinite(retryOptions.timeoutInMs) ||
+    retryOptions.timeoutInMs < Constants.defaultOperationTimeoutInMs
       ? Constants.defaultOperationTimeoutInMs
       : retryOptions.timeoutInMs;
   return timeoutInMs;
@@ -203,7 +203,10 @@ export class EventHubClient {
    * e.g. 'Endpoint=sb://my-servicebus-namespace.servicebus.windows.net/;SharedAccessKeyName=my-SA-name;SharedAccessKey=my-SA-key;EntityPath=my-event-hub-name'.
    * @param options - A set of options to apply when configuring the client.
    */
-  static fromConnectionString(connectionString: string, options?: EventHubClientOptions): EventHubClient;
+  static fromConnectionString(
+    connectionString: string,
+    options?: EventHubClientOptions
+  ): EventHubClient;
   /**
    * Creates an `EventHubClient` using the provided connection string and Event Hub path.
    * @param connectionString - The connection string to use for connecting to the Event Hubs namespace;
@@ -212,8 +215,16 @@ export class EventHubClient {
    * @param eventHubName - The path of the specific Event Hub to connect the client to.
    * @param options - A set of options to apply when configuring the client.
    */
-  static fromConnectionString(connectionString: string, eventHubName: string, options?: EventHubClientOptions): EventHubClient;
-  static fromConnectionString(connectionString: string, eventHubNameOrOptions?: string | EventHubClientOptions, options?: EventHubClientOptions): EventHubClient {
+  static fromConnectionString(
+    connectionString: string,
+    eventHubName: string,
+    options?: EventHubClientOptions
+  ): EventHubClient;
+  static fromConnectionString(
+    connectionString: string,
+    eventHubNameOrOptions?: string | EventHubClientOptions,
+    options?: EventHubClientOptions
+  ): EventHubClient {
     if (typeof eventHubNameOrOptions === "string") {
       return new EventHubClient(connectionString, eventHubNameOrOptions, options);
     } else {
