@@ -84,15 +84,17 @@ export class EventDataBatch {
 
 // @public
 export class EventHubClient {
-    constructor(connectionString: string, options?: EventHubClientOptions);
-    constructor(connectionString: string, eventHubPath: string, options?: EventHubClientOptions);
     constructor(host: string, eventHubPath: string, credential: TokenCredential, options?: EventHubClientOptions);
+    constructor(connectionString: string, eventHubPath: string, options?: EventHubClientOptions);
+    constructor(connectionString: string, options?: EventHubClientOptions);
     close(): Promise<void>;
     createConsumer(consumerGroup: string, partitionId: string, eventPosition: EventPosition, options?: EventHubConsumerOptions): EventHubConsumer;
     static createFromIotHubConnectionString(iothubConnectionString: string, options?: EventHubClientOptions): Promise<EventHubClient>;
     createProducer(options?: EventHubProducerOptions): EventHubProducer;
     static defaultConsumerGroupName: string;
     readonly eventHubName: string;
+    static fromConnectionString(connectionString: string, eventHubName: string, options?: EventHubClientOptions): EventHubClient;
+    static fromConnectionString(connectionString: string, options?: EventHubClientOptions): EventHubClient;
     getPartitionIds(abortSignal?: AbortSignalLike): Promise<Array<string>>;
     getPartitionProperties(partitionId: string, abortSignal?: AbortSignalLike): Promise<PartitionProperties>;
     getProperties(abortSignal?: AbortSignalLike): Promise<EventHubProperties>;

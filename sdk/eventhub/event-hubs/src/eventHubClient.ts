@@ -197,6 +197,42 @@ export class EventHubClient {
   }
 
   /**
+   * Creates an `EventHubClient` using the provided connection string and Event Hub path.
+   * @param connectionString - The connection string to use for connecting to the Event Hubs namespace;
+   * It is expected that the shared key properties and the Event Hub path are contained in this connection string.
+   * e.g. 'Endpoint=sb://my-servicebus-namespace.servicebus.windows.net/;SharedAccessKeyName=my-SA-name;SharedAccessKey=my-SA-key;EntityPath=my-event-hub-name'.
+   * @param options - A set of options to apply when configuring the client.
+   */
+  static fromConnectionString(
+    connectionString: string,
+    options?: EventHubClientOptions
+  ): EventHubClient;
+  /**
+   * Creates an `EventHubClient` using the provided connection string and Event Hub path.
+   * @param connectionString - The connection string to use for connecting to the Event Hubs namespace;
+   * it is expected that the shared key properties are contained in this connection string, but not the Event Hub path,
+   * e.g. 'Endpoint=sb://my-servicebus-namespace.servicebus.windows.net/;SharedAccessKeyName=my-SA-name;SharedAccessKey=my-SA-key;'.
+   * @param eventHubName - The path of the specific Event Hub to connect the client to.
+   * @param options - A set of options to apply when configuring the client.
+   */
+  static fromConnectionString(
+    connectionString: string,
+    eventHubName: string,
+    options?: EventHubClientOptions
+  ): EventHubClient;
+  static fromConnectionString(
+    connectionString: string,
+    eventHubNameOrOptions?: string | EventHubClientOptions,
+    options?: EventHubClientOptions
+  ): EventHubClient {
+    if (typeof eventHubNameOrOptions === "string") {
+      return new EventHubClient(connectionString, eventHubNameOrOptions, options);
+    } else {
+      return new EventHubClient(connectionString, options);
+    }
+  }
+
+  /**
    * @constructor
    * @param connectionString - The connection string to use for connecting to the Event Hubs namespace.
    * It is expected that the shared key properties and the Event Hub path are contained in this connection string.

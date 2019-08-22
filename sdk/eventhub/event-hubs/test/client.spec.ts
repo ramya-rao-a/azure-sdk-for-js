@@ -43,8 +43,25 @@ describe("Create EventHubClient #RunnableInBrowser", function(): void {
     should.equal(client.eventHubName, "my-event-hub-path");
   });
 
+  it("creates an EventHubClient from a connection string (factory)", function(): void {
+    const client = EventHubClient.fromConnectionString(
+      "Endpoint=sb://a;SharedAccessKeyName=b;SharedAccessKey=c;EntityPath=my-event-hub-path"
+    );
+    client.should.be.an.instanceof(EventHubClient);
+    should.equal(client.eventHubName, "my-event-hub-path");
+  });
+
   it("creates an EventHubClient from a connection string and an Event Hub path", function(): void {
     const client = new EventHubClient(
+      "Endpoint=sb://a;SharedAccessKeyName=b;SharedAccessKey=c",
+      "my-event-hub-path"
+    );
+    client.should.be.an.instanceof(EventHubClient);
+    should.equal(client.eventHubName, "my-event-hub-path");
+  });
+
+  it("creates an EventHubClient from a connection string and an Event Hub path (factory)", function(): void {
+    const client = EventHubClient.fromConnectionString(
       "Endpoint=sb://a;SharedAccessKeyName=b;SharedAccessKey=c",
       "my-event-hub-path"
     );
