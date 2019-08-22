@@ -32,7 +32,10 @@ export enum CloseReason {
 }
 
 /**
- * Partition ownership information. Used by `PartitionManager` to claim ownership.
+ * An interface representing the details on which instance of a `EventProcessor` owns processing
+ * of a given partition from a consumer group of an Event Hub instance.
+ *
+ * **Note**: This is used internally by the `EventProcessor` and user never has to create it directly.
  */
 export interface PartitionOwnership {
   /**
@@ -75,7 +78,16 @@ export interface PartitionOwnership {
 }
 
 /**
- *  Partition manager stores and retrieves partition ownership information and checkpoint details for each partition in a given consumer group of an event hub instance.
+ * A Partition manager stores and retrieves partition ownership information and checkpoint details
+ * for each partition in a given consumer group of an event hub instance.
+ *
+ * This is used to construct an `EventProcessor` meant to process events from multiple partitions from a
+ * consumer group of an Event Hub instance.
+ *
+ * To get started, you can use the `InMemoryPartitionManager` which will store the relevant information in memory.
+ * But in production, you should choose an implementation of the `PartitionManager` interface that will
+ * store the checkpoints and partition ownerships to a durable store instead.
+ *
  */
 export interface PartitionManager {
   /**
@@ -120,11 +132,15 @@ export interface EventProcessorOptions {
  * @param context The partition context containing information about the partition and Event Hub being processed.
  * @param checkpointManager Used to update a checkpoint that tracks the most recently processed event.
  */
-export type EventHandler = (events: ReceivedEventData[], context: PartitionContext, checkpointManager: CheckpointManager) => Promise<void>;
+export type EventHandler = (
+  events: ReceivedEventData[],
+  context: PartitionContext,
+  checkpointManager: CheckpointManager
+) => Promise<void>;
 /**
  * This method is called when the `EventProcessor` takes ownership of a new partition and before any
  * events are received.
- * 
+ *
  * @param context The partition context containing information about the partition and Event Hub being processed.
  */
 export type PartitionInitializeHandler = (context: PartitionContext) => Promise<void>;
@@ -135,19 +151,34 @@ export type PartitionInitializeHandler = (context: PartitionContext) => Promise<
  * @param context The partition context containing information about the partition and Event Hub being processed.
  * @param checkpointManager Used to update a checkpoint that tracks the most recently processed event.
  */
-export type PartitionCloseHandler = (reason: CloseReason, context: PartitionContext, checkpointManager: CheckpointManager) => Promise<void>;
+export type PartitionCloseHandler = (
+  reason: CloseReason,
+  context: PartitionContext,
+  checkpointManager: CheckpointManager
+) => Promise<void>;
 /**
  * This method is called when an error occurs while receiving events from Event Hub.
- * 
+ *
  * @param error The error to be processed.
  * @param context The partition context containing information about the partition and Event Hub being processed.
  * @param checkpointManager Used to update a checkpoint that tracks the most recently processed event.
  */
-export type PartitionErrorHandler = (error: Error, context: PartitionContext, checkpointManager: CheckpointManager) => Promise<void>;
-
+export type PartitionErrorHandler = (
+  error: Error,
+  context: PartitionContext,
+  checkpointManager: CheckpointManager
+) => Promise<void>;
 
 /**
- * Describes the Event Processor Host to process events from an EventHub.
+ * `EventProcessor` is a high level construct that 
+ * - uses an `EventHubClient` to receive events from multiple partitions in a consumer group of an Event Hub instance
+ * - provides the ability to checkpoint and load balance across multiple instances of itself using the `PartitionManager`
+ * 
+ * A checkpoint is meant to represent the last successfully processed event by the user from a particular
+ * partition of a consumer group in an Event Hub instance.
+ * 
+ * By setting up multiple instances of the `EventProcessor` over different machines, the partitions will be distributed
+ * for processing among the different instances. This achieves load balancing.
  * @class EventProcessorHost
  */
 export class EventProcessor {
