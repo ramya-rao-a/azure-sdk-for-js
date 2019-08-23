@@ -219,7 +219,7 @@ export class EventProcessor {
 
   /**
    * @param consumerGroupName The name of the consumer group from which you want to process events
-   * @param eventHubAsyncClient An instance of `EventHubClient` that was created for the Event Hub instance.
+   * @param eventHubClient An instance of `EventHubClient` that was created for the Event Hub instance.
    * @param eventHandler The function that is invoked whenever the EventProcessor receives events.
    * @param partitionManager An instance of `PartitionManager`. To get started, you can pass an instance of `InMemoryPartitionManager`.
    * For production, choose an implementation that will store checkpoints and partition ownership details to a durable store.
