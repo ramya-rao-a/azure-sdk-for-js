@@ -2,18 +2,32 @@
 // Licensed under the MIT License.
 
 import * as log from "./log";
-import { EventProcessorOptions, PartitionProcessor, CloseReason } from "./eventProcessor";
+import { EventProcessorOptions, CloseReason, EventHandler, PartitionCloseHandler, PartitionInitializeHandler, PartitionErrorHandler } from "./eventProcessor";
 import { PartitionContext } from "./partitionContext";
 import { EventHubClient } from "./eventHubClient";
 import { EventPosition } from "./eventPosition";
 import { EventHubConsumer } from "./receiver";
 import { AbortController } from "@azure/abort-controller";
 import { MessagingError } from "@azure/core-amqp";
+import { CheckpointManager } from './checkpointManager';
 
+export interface OptionalPartitionHandlers {
+  closeHandler?: PartitionCloseHandler;
+  initHandler?: PartitionInitializeHandler;
+  errorHandler?: PartitionErrorHandler;
+}
+
+/**
+ * @ignore
+ */
 export class PartitionPump {
   private _partitionContext: PartitionContext;
+  private _checkpointManager: CheckpointManager;
   private _eventHubClient: EventHubClient;
-  private _partitionProcessor: PartitionProcessor;
+  private _eventHandler: EventHandler;
+  private _closeHandler?: PartitionCloseHandler;
+  private _initHandler?: PartitionInitializeHandler;
+  private _errorHandler?: PartitionErrorHandler;
   private _processorOptions: EventProcessorOptions;
   private _receiver: EventHubConsumer | undefined;
   private _isReceiving: boolean = false;
@@ -22,15 +36,21 @@ export class PartitionPump {
   constructor(
     eventHubClient: EventHubClient,
     partitionContext: PartitionContext,
-    partitionProcessor: PartitionProcessor,
+    checkpointManager: CheckpointManager,
+    eventHandler: EventHandler,
+    partitionHandlers: OptionalPartitionHandlers = {},
     options?: EventProcessorOptions
   ) {
     if (!options) options = {};
     this._eventHubClient = eventHubClient;
     this._partitionContext = partitionContext;
-    this._partitionProcessor = partitionProcessor;
+    this._checkpointManager = checkpointManager;
+    this._eventHandler = eventHandler;
     this._processorOptions = options;
     this._abortController = new AbortController();
+    this._closeHandler = partitionHandlers.closeHandler;
+    this._initHandler = partitionHandlers.initHandler;
+    this._errorHandler = partitionHandlers.errorHandler;
   }
 
   public get isReceiving(): boolean {
@@ -39,9 +59,9 @@ export class PartitionPump {
 
   async start(): Promise<void> {
     this._isReceiving = true;
-    if (typeof this._partitionProcessor.initialize === "function") {
+    if (typeof this._initHandler === "function") {
       try {
-        await this._partitionProcessor.initialize();
+        await this._initHandler(this._partitionContext);
       } catch {
         // swallow the error from the user-defined code
       }
@@ -68,7 +88,7 @@ export class PartitionPump {
         if (!this._isReceiving) {
           return;
         }
-        await this._partitionProcessor.processEvents(receivedEvents);
+        await this._eventHandler(receivedEvents, this._partitionContext, this._checkpointManager);
       } catch (err) {
         // check if this pump is still receiving
         // it may not be if the EventProcessor was stopped during processEvents
@@ -78,11 +98,14 @@ export class PartitionPump {
         }
 
         // forward error to user's processError and swallow errors they may throw
-        try {
-          await this._partitionProcessor.processError(err);
-        } catch (err) {
-          log.error("An error was thrown by user's processError method: ", err);
+        if (typeof this._errorHandler === "function") {
+          try {
+            await this._errorHandler(err, this._partitionContext, this._checkpointManager);
+          } catch (err) {
+            log.error("An error was thrown by user's processError method: ", err);
+          }
         }
+        
 
         // close the partition processor if a non-retryable error was encountered
         if (typeof err !== "object" || !(err as MessagingError).retryable) {
@@ -107,8 +130,8 @@ export class PartitionPump {
         await this._receiver.close();
       }
       this._abortController.abort();
-      if (typeof this._partitionProcessor.close === "function") {
-        await this._partitionProcessor.close(reason);
+      if (typeof this._closeHandler === "function") {
+        await this._closeHandler(reason, this._partitionContext, this._checkpointManager);
       }
     } catch (err) {
       log.error("An error occurred while closing the receiver.", err);

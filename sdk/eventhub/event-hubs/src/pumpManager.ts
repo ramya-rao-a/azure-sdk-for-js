@@ -4,9 +4,10 @@
 import { EventHubClient } from "./eventHubClient";
 import { PartitionContext } from "./partitionContext";
 import { EventPosition } from "./eventPosition";
-import { PartitionProcessor, EventProcessorOptions, CloseReason } from "./eventProcessor";
-import { PartitionPump } from "./partitionPump";
+import { EventProcessorOptions, CloseReason, EventHandler } from "./eventProcessor";
+import { PartitionPump, OptionalPartitionHandlers } from "./partitionPump";
 import * as log from "./log";
+import { CheckpointManager } from './checkpointManager';
 
 /**
  * The PumpManager handles the creation and removal of PartitionPumps.
@@ -52,8 +53,10 @@ export class PumpManager {
   public async createPump(
     eventHubClient: EventHubClient,
     partitionContext: PartitionContext,
+    checkpointManager: CheckpointManager,
     initialEventPosition: EventPosition,
-    partitionProcessor: PartitionProcessor
+    eventHandler: EventHandler,
+    partitionHandlers: OptionalPartitionHandlers = {}
   ): Promise<void> {
     const partitionId = partitionContext.partitionId;
     // attempt to get an existing pump
@@ -73,7 +76,7 @@ export class PumpManager {
 
     log.pumpManager(`[${this._eventProcessorName}] [${partitionId}] Creating a new pump.`);
 
-    const pump = new PartitionPump(eventHubClient, partitionContext, partitionProcessor, {
+    const pump = new PartitionPump(eventHubClient, partitionContext, checkpointManager, eventHandler, partitionHandlers, {
       ...this._options,
       initialEventPosition
     });

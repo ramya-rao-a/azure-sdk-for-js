@@ -25,10 +25,12 @@ export {
   EventProcessor,
   CloseReason,
   EventProcessorOptions,
-  PartitionProcessor,
   PartitionManager,
-  PartitionProcessorFactory,
-  PartitionOwnership
+  PartitionOwnership,
+  EventHandler,
+  PartitionCloseHandler,
+  PartitionErrorHandler,
+  PartitionInitializeHandler
 } from "./eventProcessor";
 export { PartitionContext } from "./partitionContext";
 export { InMemoryPartitionManager } from "./inMemoryPartitionManager";
