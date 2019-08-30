@@ -4,9 +4,10 @@
 import { EventHubClient } from "./eventHubClient";
 import { PartitionContext } from "./partitionContext";
 import { EventPosition } from "./eventPosition";
-import { PartitionProcessor, EventProcessorOptions, CloseReason } from "./eventProcessor";
+import { EventProcessorOptions, CloseReason } from "./eventProcessor";
 import { PartitionPump } from "./partitionPump";
 import * as log from "./log";
+import { PartitionProcessor } from "./partitionProcessor";
 
 /**
  * The PumpManager handles the creation and removal of PartitionPumps.
