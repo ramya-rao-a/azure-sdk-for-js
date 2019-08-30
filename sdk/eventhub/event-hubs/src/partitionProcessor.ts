@@ -4,7 +4,7 @@ import { CloseReason } from "./eventProcessor";
 import { ReceivedEventData } from "./eventData";
 
 /**
- * The PartitionProcessor is responsible for handling received events from Event Hubs.
+ * The `PartitionProcessor` is responsible for processing events received from Event Hubs when using `EventProcessor`
  *
  * An instance of PartitionProcessor is created anytime an EventProcessor begins receiving messages from a partition.
  *
