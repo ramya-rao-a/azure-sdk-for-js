@@ -22,7 +22,7 @@ export class PartitionProcessor {
   }
 
   /**
-   * An object that provides information specific to the partition being processed.
+   * An object that provides information specific to the partition being processed. This will have properties like the `partitionId`, `eventHubName` and `consumerGroupName`.
    */
   get context(): PartitionContext {
     return this._partitionContext;
@@ -61,7 +61,9 @@ export class PartitionProcessor {
    * @return {Promise<void>}
    */
   async processError(error: Error): Promise<void> { }
-
+  /**
+  * Use this method to update the checkpoint with the given event
+  */
   async updateCheckpoint(eventData: ReceivedEventData): Promise<void> {
     return this._checkpointManager.updateCheckpoint(eventData);
   }
