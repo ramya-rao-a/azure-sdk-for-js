@@ -1,3 +1,5 @@
+import { CheckpointManager } from "./checkpointManager";
+
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
@@ -14,14 +16,20 @@ export interface PartitionContext {
    * @readonly 
    */
   readonly partitionId: string;
-   /**
-   * @property The event hub name
-   * @readonly 
-   */
+  /**
+  * @property The event hub name
+  * @readonly 
+  */
   readonly eventHubName: string;
-   /**
-   * @property The consumer group name
-   * @readonly 
-   */
+  /**
+  * @property The consumer group name
+  * @readonly 
+  */
   readonly consumerGroupName: string;
+
+  /**
+   * @property The CheckpointManager to use for checkpointing events from this partition.
+   * @readonly
+   */
+  readonly checkpointManager: CheckpointManager;
 }

@@ -6,12 +6,12 @@ import { EventHubClient } from "./eventHubClient";
 import { EventPosition } from "./eventPosition";
 import { PartitionContext } from "./partitionContext";
 import { CheckpointManager, Checkpoint } from "./checkpointManager";
-import { ReceivedEventData } from "./eventData";
 import { PumpManager } from "./pumpManager";
 import { AbortController, AbortSignalLike } from "@azure/abort-controller";
 import * as log from "./log";
 import { PartitionLoadBalancer } from "./partitionLoadBalancer";
 import { delay } from "@azure/core-amqp";
+import { PartitionProcessorBase } from "./partitionProcessor";
 
 /**
  * An enum representing the different reasons for an `EventProcessor` to stop processing
@@ -30,47 +30,6 @@ export enum CloseReason {
    * The EventProcessor was shutdown.
    */
   Shutdown = "Shutdown"
-}
-
-/**
- * An interface to be implemented by the user in order to be used by the `EventProcessor` via
- * the `PartitionProcessorFactory` to process events from a partition in a consumer group of an Event Hub instance.
- *
- * The interface supports methods that are called at various points of the lifecyle of processing events
- * from a partition like initialize, error and close.
- *
- */
-export interface PartitionProcessor {
-  /**
-   * This method is called when the `EventProcessor` takes ownership of a new partition and before any
-   * events are received.
-   *
-   * @return {void}
-   */
-  initialize?(): Promise<void>;
-  /**
-   * This method is called before the partition processor is closed by the EventProcessor.
-   *
-   * @param closeReason The reason for closing this partition processor.
-   * @return {void}
-   */
-  close?(reason: CloseReason): Promise<void>;
-  /**
-   * This method is called when new events are received.
-   *
-   * This is also a good place to update checkpoints as appropriate.
-   *
-   * @param eventData The received events to be processed.
-   * @return {void}
-   */
-  processEvents(events: ReceivedEventData[]): Promise<void>;
-  /**
-   * This method is called when an error occurs while receiving events from Event Hub.
-   *
-   * @param error The error to be processed.
-   * @return {void}
-   */
-  processError(error: Error): Promise<void>;
 }
 
 /**
@@ -117,28 +76,6 @@ export interface PartitionOwnership {
    * @property The unique identifier for the operation.
    */
   eTag?: string;
-}
-
-/**
- * `PartitionProcessorFactory` is the interface for the function to be implemented by the user and passed
- * to the constructor of `EventProcessor`.
- * This function acts as a factory that should return an object that implements the `PartitionProcessor`.
- *
- * An instance of `EventProcessor` calls this factory each time it begins processing a new partition
- * from a consumer group of an Event Hub instance.
- */
-export interface PartitionProcessorFactory {
-  /**
-   * Factory method to create a new instance of `PartitionProcessor` for a partition.
-   *
-   * @param partitionContext The partition context containing partition and Event Hub information. The new instance of
-   * `PartitionProcessor` created by this method will be responsible for processing events only for this
-   * partition.
-   * @param checkpointManager The checkpoint manager for updating checkpoints when events are processed by `PartitionProcessor`.
-   *
-   * @return A new instance of `PartitionProcessor` responsible for processing events.
-   */
-  (context: PartitionContext, checkpointManager: CheckpointManager): PartitionProcessor;
 }
 
 /**
@@ -208,7 +145,7 @@ export interface EventProcessorOptions {
  * `EventProcessor` is a high level construct that
  * - uses an `EventHubClient` to receive events from multiple partitions in a consumer group of
  * an Event Hub instance.
- * - uses a factory method implemented by the user to create new processors for each partition.
+ * - uses a PartitionProcessor class implemented by the user to create new processors for each partition.
  * These processors hold user code to process events.
  * - provides the ability to checkpoint and load balance across multiple instances of itself
  * using the `PartitionManager`.
@@ -222,15 +159,14 @@ export interface EventProcessorOptions {
  * You need the below to create an instance of `EventProcessor`
  * - The name of the consumer group from which you want to process events
  * - An instance of `EventHubClient` that was created for the Event Hub instance.
- * - A factory method that can return an object that implements the `PartitionProcessor` interface.
- * This method should be implemented by the user. For example:
- * (context, checkpointManager) => {
- *    return {
- *      processEvents: (events) => {
+ * - A class that extends the `PartitionProcessorBase` class.
+ * Note that this must be the actual class and not an instance of the class.
+ * This subclass should be implemented by the user. For example:
+ * class SamplePartitionProcessor extends PartitionProcessorBase {
+ *     processEvents: (events) => {
  *        // user code here
  *        // use the context to get information on the partition
  *        // use the checkpointManager to update checkpoints if needed
- *       }
  *     }
  * }
  * - An instance of `PartitionManager`. To get started, you can pass an instance of `InMemoryPartitionManager`.
@@ -241,7 +177,7 @@ export interface EventProcessorOptions {
 export class EventProcessor {
   private _consumerGroupName: string;
   private _eventHubClient: EventHubClient;
-  private _partitionProcessorFactory: PartitionProcessorFactory;
+  private _partitionProcessorClass: typeof PartitionProcessorBase;
   private _processorOptions: EventProcessorOptions;
   private _pumpManager: PumpManager;
   private _id: string = uuid();
@@ -266,7 +202,7 @@ export class EventProcessor {
   constructor(
     consumerGroupName: string,
     eventHubClient: EventHubClient,
-    partitionProcessorFactory: PartitionProcessorFactory,
+    partitionProcessorClass: typeof PartitionProcessorBase,
     partitionManager: PartitionManager,
     options?: EventProcessorOptions
   ) {
@@ -274,7 +210,7 @@ export class EventProcessor {
 
     this._consumerGroupName = consumerGroupName;
     this._eventHubClient = eventHubClient;
-    this._partitionProcessorFactory = partitionProcessorFactory;
+    this._partitionProcessorClass = partitionProcessorClass;
     this._partitionManager = partitionManager;
     this._processorOptions = options;
     this._pumpManager = new PumpManager(this._id, options);
@@ -331,24 +267,29 @@ export class EventProcessor {
       log.partitionLoadBalancer(
         `[${this._id}] Successfully claimed ownership of partition ${partitionIdToClaim}.`
       );
-      const partitionContext: PartitionContext = {
-        consumerGroupName: this._consumerGroupName,
-        eventHubName: this._eventHubClient.eventHubName,
-        partitionId: ownershipRequest.partitionId
-      };
 
       const checkpointManager = new CheckpointManager(
-        partitionContext,
+        this._eventHubClient.eventHubName,
+        this._consumerGroupName,
+        ownershipRequest.partitionId,
         this._partitionManager,
         this._id
       );
 
+      const partitionContext: PartitionContext = {
+        consumerGroupName: this._consumerGroupName,
+        eventHubName: this._eventHubClient.eventHubName,
+        partitionId: ownershipRequest.partitionId,
+        checkpointManager
+      };
+
+
+
       log.partitionLoadBalancer(
         `[${this._id}] [${partitionIdToClaim}] Calling user-provided PartitionProcessorFactory.`
       );
-      const partitionProcessor = this._partitionProcessorFactory(
-        partitionContext,
-        checkpointManager
+      const partitionProcessor = new this._partitionProcessorClass(
+        partitionContext
       );
 
       const eventPosition = ownershipRequest.sequenceNumber

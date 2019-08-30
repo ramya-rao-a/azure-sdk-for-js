@@ -12,12 +12,11 @@ import {
   EventHubClient,
   EventData,
   EventProcessor,
-  PartitionContext,
   delay,
   InMemoryPartitionManager,
   PartitionOwnership,
   Checkpoint,
-  PartitionProcessorFactory,
+  PartitionProcessorBase,
   CloseReason,
   ReceivedEventData
 } from "../src";
@@ -25,13 +24,13 @@ import { EnvVarKeys, getEnvVars } from "./utils/testUtils";
 import { generate_uuid, Dictionary } from "rhea-promise";
 const env = getEnvVars();
 
-describe("Event Processor", function(): void {
+describe.only("Event Processor", function (): void {
   const service = {
     connectionString: env[EnvVarKeys.EVENTHUB_CONNECTION_STRING],
     path: env[EnvVarKeys.EVENTHUB_NAME]
   };
   const client: EventHubClient = new EventHubClient(service.connectionString, service.path);
-  before("validate environment", async function(): Promise<void> {
+  before("validate environment", async function (): Promise<void> {
     should.exist(
       env[EnvVarKeys.EVENTHUB_CONNECTION_STRING],
       "define EVENTHUB_CONNECTION_STRING in your environment before running integration tests."
@@ -42,22 +41,15 @@ describe("Event Processor", function(): void {
     );
   });
 
-  after("close the connection", async function(): Promise<void> {
+  after("close the connection", async function (): Promise<void> {
     await client.close();
   });
 
-  it("should expose an id", async function(): Promise<void> {
-    const factory: PartitionProcessorFactory = (context) => {
-      return {
-        async processEvents() {},
-        async processError() {}
-      };
-    };
-
+  it("should expose an id", async function (): Promise<void> {
     const processor = new EventProcessor(
       EventHubClient.defaultConsumerGroupName,
       client,
-      factory,
+      PartitionProcessorBase,
       new InMemoryPartitionManager(),
       {
         initialEventPosition: EventPosition.fromEnqueuedTime(new Date())
@@ -68,7 +60,7 @@ describe("Event Processor", function(): void {
     id.length.should.be.gt(1);
   });
 
-  it("should treat consecutive start invocations as idempotent", async function(): Promise<void> {
+  it("should treat consecutive start invocations as idempotent", async function (): Promise<void> {
     const partitionIds = await client.getPartitionIds();
 
     // ensure we have at least 2 partitions
@@ -83,29 +75,31 @@ describe("Event Processor", function(): void {
     const partitionOwnerShip = new Set();
 
     // The partitionProcess will need to add events to the partitionResultsMap as they are received
-    const factory: PartitionProcessorFactory = (context) => {
-      return {
-        async initialize() {
-          partitionResultsMap.get(context.partitionId)!.initialized = true;
-        },
-        async close(reason) {
-          partitionResultsMap.get(context.partitionId)!.closeReason = reason;
-        },
-        async processEvents(events) {
-          partitionOwnerShip.add(context.partitionId);
-          const existingEvents = partitionResultsMap.get(context.partitionId)!.events;
-          events.forEach((event) => existingEvents.push(event.body));
-        },
-        async processError() {
-          didError = true;
-        }
-      };
-    };
+    class TestPartitionProcessor extends PartitionProcessorBase {
+      async initialize() {
+        partitionResultsMap.get(this.context.partitionId)!.initialized = true;
+      }
+
+      async close(reason: CloseReason) {
+        partitionResultsMap.get(this.context.partitionId)!.closeReason = reason;
+      }
+
+      async processEvents(events: ReceivedEventData[]) {
+        const partitionId = this.context.partitionId;
+        partitionOwnerShip.add(partitionId);
+        const existingEvents = partitionResultsMap.get(partitionId)!.events;
+        events.forEach((event) => existingEvents.push(event.body));
+      }
+
+      async processError(error: Error) {
+        didError = true;
+      }
+    }
 
     const processor = new EventProcessor(
       EventHubClient.defaultConsumerGroupName,
       client,
-      factory,
+      TestPartitionProcessor,
       new InMemoryPartitionManager(),
       {
         initialEventPosition: EventPosition.fromEnqueuedTime(new Date())
@@ -142,31 +136,32 @@ describe("Event Processor", function(): void {
     }
   });
 
-  it("should not throw if stop is called without start", async function(): Promise<void> {
+  it("should not throw if stop is called without start", async function (): Promise<void> {
     let didPartitionProcessorStart = false;
 
     // The partitionProcess will need to add events to the partitionResultsMap as they are received
-    const factory: PartitionProcessorFactory = (context) => {
-      return {
-        async initialize() {
-          didPartitionProcessorStart = true;
-        },
-        async close() {
-          didPartitionProcessorStart = true;
-        },
-        async processEvents(events) {
-          didPartitionProcessorStart = true;
-        },
-        async processError() {
-          didPartitionProcessorStart = true;
-        }
-      };
-    };
+    class TestPartitionProcessor extends PartitionProcessorBase {
+      async initialize() {
+        didPartitionProcessorStart = true;
+      }
+
+      async close() {
+        didPartitionProcessorStart = true;
+      }
+
+      async processEvents() {
+        didPartitionProcessorStart = true;
+      }
+
+      async processError() {
+        didPartitionProcessorStart = true;
+      }
+    }
 
     const processor = new EventProcessor(
       EventHubClient.defaultConsumerGroupName,
       client,
-      factory,
+      TestPartitionProcessor,
       new InMemoryPartitionManager(),
       {
         initialEventPosition: EventPosition.fromEnqueuedTime(new Date())
@@ -179,7 +174,7 @@ describe("Event Processor", function(): void {
     didPartitionProcessorStart.should.be.false;
   });
 
-  it("should support start after stopping", async function(): Promise<void> {
+  it("should support start after stopping", async function (): Promise<void> {
     const partitionIds = await client.getPartitionIds();
     let partitionOwnerShip = new Set();
 
@@ -194,29 +189,27 @@ describe("Event Processor", function(): void {
     let didError = false;
 
     // The partitionProcess will need to add events to the partitionResultsMap as they are received
-    const factory: PartitionProcessorFactory = (context) => {
-      return {
-        async initialize() {
-          partitionResultsMap.get(context.partitionId)!.initialized = true;
-        },
-        async close(reason) {
-          partitionResultsMap.get(context.partitionId)!.closeReason = reason;
-        },
-        async processEvents(events) {
-          partitionOwnerShip.add(context.partitionId);
-          const existingEvents = partitionResultsMap.get(context.partitionId)!.events;
-          events.forEach((event) => existingEvents.push(event.body));
-        },
-        async processError() {
-          didError = true;
-        }
-      };
-    };
+    class TestPartitionProcessor extends PartitionProcessorBase {
+      async initialize() {
+        partitionResultsMap.get(this.context.partitionId)!.initialized = true;
+      }
+      async close(reason: CloseReason) {
+        partitionResultsMap.get(this.context.partitionId)!.closeReason = reason;
+      }
+      async processEvents(events: ReceivedEventData[]) {
+        partitionOwnerShip.add(this.context.partitionId);
+        const existingEvents = partitionResultsMap.get(this.context.partitionId)!.events;
+        events.forEach((event) => existingEvents.push(event.body));
+      }
+      async processError() {
+        didError = true;
+      }
+    }
 
     const processor = new EventProcessor(
       EventHubClient.defaultConsumerGroupName,
       client,
-      factory,
+      TestPartitionProcessor,
       new InMemoryPartitionManager(),
       {
         initialEventPosition: EventPosition.fromEnqueuedTime(new Date())
@@ -279,8 +272,8 @@ describe("Event Processor", function(): void {
     }
   });
 
-  describe("Partition processor", function(): void {
-    it("should support processing events across multiple partitions", async function(): Promise<
+  describe("Partition processor", function (): void {
+    it("should support processing events across multiple partitions", async function (): Promise<
       void
     > {
       const partitionIds = await client.getPartitionIds();
@@ -296,29 +289,27 @@ describe("Event Processor", function(): void {
       let didError = false;
 
       // The partitionProcess will need to add events to the partitionResultsMap as they are received
-      const factory: PartitionProcessorFactory = (context) => {
-        return {
-          async initialize() {
-            partitionResultsMap.get(context.partitionId)!.initialized = true;
-          },
-          async close(reason) {
-            partitionResultsMap.get(context.partitionId)!.closeReason = reason;
-          },
-          async processEvents(events) {
-            partitionOwnerShip.add(context.partitionId);
-            const existingEvents = partitionResultsMap.get(context.partitionId)!.events;
-            events.forEach((event) => existingEvents.push(event.body));
-          },
-          async processError() {
-            didError = true;
-          }
-        };
-      };
+      class TestPartitionProcessor extends PartitionProcessorBase {
+        async initialize() {
+          partitionResultsMap.get(this.context.partitionId)!.initialized = true;
+        }
+        async close(reason: CloseReason) {
+          partitionResultsMap.get(this.context.partitionId)!.closeReason = reason;
+        }
+        async processEvents(events: ReceivedEventData[]) {
+          partitionOwnerShip.add(this.context.partitionId);
+          const existingEvents = partitionResultsMap.get(this.context.partitionId)!.events;
+          events.forEach((event) => existingEvents.push(event.body));
+        }
+        async processError() {
+          didError = true;
+        }
+      }
 
       const processor = new EventProcessor(
         EventHubClient.defaultConsumerGroupName,
         client,
-        factory,
+        TestPartitionProcessor,
         new InMemoryPartitionManager(),
         {
           initialEventPosition: EventPosition.fromEnqueuedTime(new Date())
@@ -355,7 +346,7 @@ describe("Event Processor", function(): void {
       }
     });
 
-    it("should support processing events across multiple partitions without initialize or close", async function(): Promise<
+    it("should support processing events across multiple partitions without initialize or close", async function (): Promise<
       void
     > {
       const partitionIds = await client.getPartitionIds();
@@ -369,23 +360,21 @@ describe("Event Processor", function(): void {
       let didError = false;
 
       // The partitionProcess will need to add events to the partitionResultsMap as they are received
-      const factory: PartitionProcessorFactory = (context) => {
-        return {
-          async processEvents(events) {
-            partitionOwnerShip.add(context.partitionId);
-            const existingEvents = partitionResultsMap.get(context.partitionId)!;
-            events.forEach((event) => existingEvents.push(event.body));
-          },
-          async processError() {
-            didError = true;
-          }
-        };
-      };
+      class TestPartitionProcessor extends PartitionProcessorBase {
+        async processEvents(events: ReceivedEventData[]) {
+          partitionOwnerShip.add(this.context.partitionId);
+          const existingEvents = partitionResultsMap.get(this.context.partitionId)!;
+          events.forEach((event) => existingEvents.push(event.body));
+        }
+        async processError() {
+          didError = true;
+        }
+      }
 
       const processor = new EventProcessor(
         EventHubClient.defaultConsumerGroupName,
         client,
-        factory,
+        TestPartitionProcessor,
         new InMemoryPartitionManager(),
         {
           initialEventPosition: EventPosition.fromEnqueuedTime(new Date())
@@ -419,12 +408,12 @@ describe("Event Processor", function(): void {
       }
     });
 
-    it("should call methods on a PartitionProcessor ", async function(): Promise<void> {
+    it("should call methods on a PartitionProcessor ", async function (): Promise<void> {
       const receivedEvents: EventData[] = [];
       let isinitializeCalled = false;
       let isCloseCalled = false;
       let didError = false;
-      class SimpleEventProcessor {
+      class SimpleEventProcessor extends PartitionProcessorBase {
         async initialize() {
           isinitializeCalled = true;
           debug(`Started processing`);
@@ -446,14 +435,11 @@ describe("Event Processor", function(): void {
           debug(`Stopped processing`);
         }
       }
-      const eventProcessorFactory = (context: PartitionContext) => {
-        return new SimpleEventProcessor();
-      };
 
       const processor = new EventProcessor(
         EventHubClient.defaultConsumerGroupName,
         client,
-        eventProcessorFactory,
+        SimpleEventProcessor,
         new InMemoryPartitionManager(),
         {
           initialEventPosition: EventPosition.fromEnqueuedTime(new Date())
@@ -478,8 +464,8 @@ describe("Event Processor", function(): void {
     });
   });
 
-  describe("InMemory Partition Manager", function(): void {
-    it("should claim ownership, get a list of ownership and update checkpoint", async function(): Promise<
+  describe("InMemory Partition Manager", function (): void {
+    it("should claim ownership, get a list of ownership and update checkpoint", async function (): Promise<
       void
     > {
       const inMemoryPartitionManager = new InMemoryPartitionManager();
@@ -528,7 +514,7 @@ describe("Event Processor", function(): void {
       partitionOwnershipList[0].offset!.should.equals(checkpoint.offset);
     });
 
-    it("should receive events from the checkpoint", async function(): Promise<void> {
+    it("should receive events from the checkpoint", async function (): Promise<void> {
       const partitionIds = await client.getPartitionIds();
 
       // ensure we have at least 2 partitions
@@ -540,33 +526,31 @@ describe("Event Processor", function(): void {
       let partitionOwnerShip = new Set();
 
       let partionCount: { [x: string]: number } = {};
-      const factory: PartitionProcessorFactory = (context, checkpointManager) => {
-        return {
-          async processEvents(events: ReceivedEventData[]) {
-            partitionOwnerShip.add(context.partitionId);
-            !partionCount[context.partitionId]
-              ? (partionCount[context.partitionId] = 1)
-              : partionCount[context.partitionId]++;
-            const existingEvents = checkpointMap.get(context.partitionId)!;
-            for (const event of events) {
-              debug("Received event: '%s' from partition: '%s'", event.body, context.partitionId);
-              if (partionCount[context.partitionId] <= 50) {
-                await checkpointManager.updateCheckpoint(event);
-                existingEvents.push(event);
-              }
+      class TestPartitionProcessor extends PartitionProcessorBase {
+        async processEvents(events: ReceivedEventData[]) {
+          partitionOwnerShip.add(this.context.partitionId);
+          !partionCount[this.context.partitionId]
+            ? (partionCount[this.context.partitionId] = 1)
+            : partionCount[this.context.partitionId]++;
+          const existingEvents = checkpointMap.get(this.context.partitionId)!;
+          for (const event of events) {
+            debug("Received event: '%s' from partition: '%s'", event.body, this.context.partitionId);
+            if (partionCount[this.context.partitionId] <= 50) {
+              await this.updateCheckpoint(event);
+              existingEvents.push(event);
             }
-          },
-          async processError() {
-            didError = true;
           }
-        };
-      };
+        }
+        async processError() {
+          didError = true;
+        }
+      }
 
       const inMemoryPartitionManager = new InMemoryPartitionManager();
       const processor1 = new EventProcessor(
         EventHubClient.defaultConsumerGroupName,
         client,
-        factory,
+        TestPartitionProcessor,
         inMemoryPartitionManager,
         {
           initialEventPosition: EventPosition.fromEnqueuedTime(new Date())
@@ -613,7 +597,7 @@ describe("Event Processor", function(): void {
       const processor2 = new EventProcessor(
         EventHubClient.defaultConsumerGroupName,
         client,
-        factory,
+        TestPartitionProcessor,
         inMemoryPartitionManager
       );
       // start second processor
@@ -647,8 +631,8 @@ describe("Event Processor", function(): void {
     });
   });
 
-  describe("Load balancing", function(): void {
-    before("validate partitions", async function(): Promise<void> {
+  describe("Load balancing", function (): void {
+    before("validate partitions", async function (): Promise<void> {
       const partitionIds = await client.getPartitionIds();
       // ensure we have at least 3 partitions
       partitionIds.length.should.gte(
@@ -657,7 +641,7 @@ describe("Event Processor", function(): void {
       );
     });
 
-    it("should 'steal' partitions until all the  processors have reached a steady-state", async function(): Promise<
+    it("should 'steal' partitions until all the  processors have reached a steady-state", async function (): Promise<
       void
     > {
       const now = Date.now();
@@ -675,27 +659,25 @@ describe("Event Processor", function(): void {
       let errorName = "";
 
       // The partitionProcess will need to add events to the partitionResultsMap as they are received
-      const factory: PartitionProcessorFactory = (context) => {
-        return {
-          async initialize() {
-            partitionResultsMap.get(context.partitionId)!.initialized = true;
-          },
-          async close(reason) {
-            partitionResultsMap.get(context.partitionId)!.closeReason = reason;
-          },
-          async processEvents(events) {
-            partitionOwnershipArr.add(context.partitionId);
-            const existingEvents = partitionResultsMap.get(context.partitionId)!.events;
-            events.forEach((event) => {
-              existingEvents.push(event.body);
-            });
-          },
-          async processError(err) {
-            didError = true;
-            errorName = err.name;
-          }
-        };
-      };
+      class TestPartitionProcessor extends PartitionProcessorBase {
+        async initialize() {
+          partitionResultsMap.get(this.context.partitionId)!.initialized = true;
+        }
+        async close(reason: CloseReason) {
+          partitionResultsMap.get(this.context.partitionId)!.closeReason = reason;
+        }
+        async processEvents(events: ReceivedEventData[]) {
+          partitionOwnershipArr.add(this.context.partitionId);
+          const existingEvents = partitionResultsMap.get(this.context.partitionId)!.events;
+          events.forEach((event) => {
+            existingEvents.push(event.body);
+          });
+        }
+        async processError(err: Error) {
+          didError = true;
+          errorName = err.name;
+        }
+      }
 
       // create messages
       const expectedMessagePrefix = "EventProcessor test - multiple partitions - ";
@@ -708,7 +690,7 @@ describe("Event Processor", function(): void {
       processorByName[`processor-1`] = new EventProcessor(
         EventHubClient.defaultConsumerGroupName,
         client,
-        factory,
+        TestPartitionProcessor,
         partitionManager,
         {
           initialEventPosition: EventPosition.fromEnqueuedTime(now)
@@ -724,7 +706,7 @@ describe("Event Processor", function(): void {
       processorByName[`processor-2`] = new EventProcessor(
         EventHubClient.defaultConsumerGroupName,
         client,
-        factory,
+        TestPartitionProcessor,
         partitionManager,
         {
           initialEventPosition: EventPosition.fromEnqueuedTime(now)
@@ -773,7 +755,7 @@ describe("Event Processor", function(): void {
       }
     });
 
-    it("should ensure that all the processors reach a steady-state where all partitions are being processed", async function(): Promise<
+    it("should ensure that all the processors reach a steady-state where all partitions are being processed", async function (): Promise<
       void
     > {
       const now = Date.now();
@@ -784,16 +766,14 @@ describe("Event Processor", function(): void {
       let didError = false;
 
       // The partitionProcess will need to add events to the partitionResultsMap as they are received
-      const factory: PartitionProcessorFactory = (context) => {
-        return {
-          async processEvents(events) {
-            partitionOwnershipArr.add(context.partitionId);
-          },
-          async processError() {
-            didError = true;
-          }
-        };
-      };
+      class TestPartitionProcessor extends PartitionProcessorBase {
+        async processEvents(events: ReceivedEventData[]) {
+          partitionOwnershipArr.add(this.context.partitionId);
+        }
+        async processError() {
+          didError = true;
+        }
+      }
 
       // create messages
       const expectedMessagePrefix = "EventProcessor test - multiple partitions - ";
@@ -808,7 +788,7 @@ describe("Event Processor", function(): void {
         processorByName[processorName] = new EventProcessor(
           EventHubClient.defaultConsumerGroupName,
           client,
-          factory,
+          TestPartitionProcessor,
           partitionManager,
           {
             initialEventPosition: EventPosition.fromEnqueuedTime(now)

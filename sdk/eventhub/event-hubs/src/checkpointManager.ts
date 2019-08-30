@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { PartitionContext } from "./partitionContext";
 import { ReceivedEventData } from "./eventData";
 import { PartitionManager } from "./eventProcessor";
 
@@ -56,7 +55,9 @@ export interface Checkpoint {
  * partition of a consumer group in an Event Hub instance.
  */
 export class CheckpointManager {
-  private _partitionContext: PartitionContext;
+  private _partitionId: string;
+  private _consumerGroupName: string;
+  private _eventHubName: string;
   private _partitionManager: PartitionManager;
   private _eventProcessorId: string;
   private _eTag: string;
@@ -72,11 +73,15 @@ export class CheckpointManager {
    * @param eventProcessorId The event processor identifier that is responsible for updating checkpoints.
    */
   constructor(
-    partitionContext: PartitionContext,
+    eventHubName: string,
+    consumerGroupName: string,
+    partitionId: string,
     partitionManager: PartitionManager,
     eventProcessorId: string
   ) {
-    this._partitionContext = partitionContext;
+    this._partitionId = partitionId;
+    this._consumerGroupName = consumerGroupName;
+    this._eventHubName = eventHubName;
     this._partitionManager = partitionManager;
     this._eventProcessorId = eventProcessorId;
     this._eTag = "";
@@ -108,10 +113,10 @@ export class CheckpointManager {
     offset?: number
   ): Promise<void> {
     const checkpoint: Checkpoint = {
-      eventHubName: this._partitionContext.eventHubName,
-      consumerGroupName: this._partitionContext.consumerGroupName,
+      eventHubName: this._eventHubName,
+      consumerGroupName: this._consumerGroupName,
       ownerId: this._eventProcessorId,
-      partitionId: this._partitionContext.partitionId,
+      partitionId: this._partitionId,
       sequenceNumber:
         typeof eventDataOrSequenceNumber === "number"
           ? eventDataOrSequenceNumber
