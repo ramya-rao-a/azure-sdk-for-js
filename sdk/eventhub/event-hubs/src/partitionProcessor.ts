@@ -7,10 +7,10 @@ import { ReceivedEventData } from "./eventData";
  * The `PartitionProcessor` is responsible for processing events received from Event Hubs when using `EventProcessor`
  *
  * The EventProcessor creates a new instance of the PartitionProcessor for each partition of the event hub it starts processing. When you extend the `PartitionProcessor` in order to customize it as you see fit,
- * - Use the `processEvents()` method to add the code to process the received events. This is also a good place to update the checkpoints.
- * - Use the `processError()` method to handle any error that might have occurred when processing the events.
- * - Use the `initialize()` method to implement any set up related tasks you would want to carry out before starting to receive events from the partition
- * - Use the `close()` method to implement any tear down or clean up tasks you would want to carry out.
+ * - Override the `processEvents()` method to add the code to process the received events. This is also a good place to update the checkpoints using the `updateCheckpoint()` method
+ * - Optionally override the `processError()` method to handle any error that might have occurred when processing the events.
+ * - Optionally override the `initialize()` method to implement any set up related tasks you would want to carry out before starting to receive events from the partition
+ * - Optionally override the `close()` method to implement any tear down or clean up tasks you would want to carry out.
  */
 export class PartitionProcessor {
   private _partitionContext: PartitionContext;
