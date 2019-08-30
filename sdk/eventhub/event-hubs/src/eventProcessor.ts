@@ -11,7 +11,7 @@ import { AbortController, AbortSignalLike } from "@azure/abort-controller";
 import * as log from "./log";
 import { PartitionLoadBalancer } from "./partitionLoadBalancer";
 import { delay } from "@azure/core-amqp";
-import { PartitionProcessorBase } from "./partitionProcessor";
+import { PartitionProcessor } from "./partitionProcessor";
 
 /**
  * An enum representing the different reasons for an `EventProcessor` to stop processing
@@ -159,10 +159,10 @@ export interface EventProcessorOptions {
  * You need the below to create an instance of `EventProcessor`
  * - The name of the consumer group from which you want to process events
  * - An instance of `EventHubClient` that was created for the Event Hub instance.
- * - A class that extends the `PartitionProcessorBase` class.
+ * - A class that extends the `PartitionProcessor` class.
  * Note that this must be the actual class and not an instance of the class.
  * This subclass should be implemented by the user. For example:
- * class SamplePartitionProcessor extends PartitionProcessorBase {
+ * class SamplePartitionProcessor extends PartitionProcessor {
  *     processEvents: (events) => {
  *        // user code here
  *        // use the context to get information on the partition
@@ -177,7 +177,7 @@ export interface EventProcessorOptions {
 export class EventProcessor {
   private _consumerGroupName: string;
   private _eventHubClient: EventHubClient;
-  private _partitionProcessorClass: typeof PartitionProcessorBase;
+  private _partitionProcessorClass: typeof PartitionProcessor;
   private _processorOptions: EventProcessorOptions;
   private _pumpManager: PumpManager;
   private _id: string = uuid();
@@ -190,7 +190,8 @@ export class EventProcessor {
   /**
    * @param consumerGroupName The name of the consumer group from which you want to process events
    * @param eventHubClient An instance of `EventHubClient` that was created for the Event Hub instance.
-   * @param partitionProcessorFactory A factory method that can return an object that implements the `PartitionProcessor` interface.
+   * @param partitionProcessorClass A user-defined class that extends `PartitionProcessor`.
+   * This will be used to handle processing of events.
    * @param partitionManager An instance of `PartitionManager`. To get started, you can pass an instance of `InMemoryPartitionManager`.
    * For production, choose an implementation that will store checkpoints and partition ownership details to a durable store.
    * @param options A set of options to configure the Event Processor
@@ -202,7 +203,7 @@ export class EventProcessor {
   constructor(
     consumerGroupName: string,
     eventHubClient: EventHubClient,
-    partitionProcessorClass: typeof PartitionProcessorBase,
+    partitionProcessorClass: typeof PartitionProcessor,
     partitionManager: PartitionManager,
     options?: EventProcessorOptions
   ) {

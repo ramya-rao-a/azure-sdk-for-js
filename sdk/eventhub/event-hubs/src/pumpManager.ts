@@ -7,7 +7,7 @@ import { EventPosition } from "./eventPosition";
 import { EventProcessorOptions, CloseReason } from "./eventProcessor";
 import { PartitionPump } from "./partitionPump";
 import * as log from "./log";
-import { PartitionProcessorBase } from "./partitionProcessor";
+import { PartitionProcessor } from "./partitionProcessor";
 
 /**
  * The PumpManager handles the creation and removal of PartitionPumps.
@@ -54,7 +54,7 @@ export class PumpManager {
     eventHubClient: EventHubClient,
     partitionContext: PartitionContext,
     initialEventPosition: EventPosition,
-    partitionProcessor: PartitionProcessorBase
+    partitionProcessor: PartitionProcessor
   ): Promise<void> {
     const partitionId = partitionContext.partitionId;
     // attempt to get an existing pump

@@ -28,7 +28,7 @@ export {
   PartitionManager,
   PartitionOwnership
 } from "./eventProcessor";
-export { PartitionProcessorBase } from "./partitionProcessor";
+export { PartitionProcessor } from "./partitionProcessor";
 export { PartitionContext } from "./partitionContext";
 export { InMemoryPartitionManager } from "./inMemoryPartitionManager";
 export { Checkpoint } from "./checkpointManager";

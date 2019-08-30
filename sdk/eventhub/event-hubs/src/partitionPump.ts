@@ -9,12 +9,12 @@ import { EventPosition } from "./eventPosition";
 import { EventHubConsumer } from "./receiver";
 import { AbortController } from "@azure/abort-controller";
 import { MessagingError } from "@azure/core-amqp";
-import { PartitionProcessorBase } from "./partitionProcessor";
+import { PartitionProcessor } from "./partitionProcessor";
 
 export class PartitionPump {
   private _partitionContext: PartitionContext;
   private _eventHubClient: EventHubClient;
-  private _partitionProcessor: PartitionProcessorBase;
+  private _partitionProcessor: PartitionProcessor;
   private _processorOptions: EventProcessorOptions;
   private _receiver: EventHubConsumer | undefined;
   private _isReceiving: boolean = false;
@@ -23,7 +23,7 @@ export class PartitionPump {
   constructor(
     eventHubClient: EventHubClient,
     partitionContext: PartitionContext,
-    partitionProcessor: PartitionProcessorBase,
+    partitionProcessor: PartitionProcessor,
     options?: EventProcessorOptions
   ) {
     if (!options) options = {};

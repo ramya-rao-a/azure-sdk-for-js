@@ -6,10 +6,10 @@ import { ReceivedEventData } from "./eventData";
 /**
  * The `PartitionProcessor` is responsible for processing events received from Event Hubs when using `EventProcessor`
  *
- * An instance of PartitionProcessor is created anytime an EventProcessor begins receiving messages from a partition.
+ * An instance of `PartitionProcessor` is created anytime an EventProcessor begins receiving messages from a partition.
  *
  */
-export class PartitionProcessorBase {
+export class PartitionProcessor {
   private _partitionContext: PartitionContext;
   private _checkpointManager: CheckpointManager;
 
