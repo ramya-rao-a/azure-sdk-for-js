@@ -16,7 +16,7 @@ import {
   InMemoryPartitionManager,
   PartitionOwnership,
   Checkpoint,
-  PartitionProcessorBase,
+  PartitionProcessor,
   CloseReason,
   ReceivedEventData
 } from "../src";
@@ -49,7 +49,7 @@ describe.only("Event Processor", function (): void {
     const processor = new EventProcessor(
       EventHubClient.defaultConsumerGroupName,
       client,
-      PartitionProcessorBase,
+      PartitionProcessor,
       new InMemoryPartitionManager(),
       {
         initialEventPosition: EventPosition.fromEnqueuedTime(new Date())
@@ -75,7 +75,7 @@ describe.only("Event Processor", function (): void {
     const partitionOwnerShip = new Set();
 
     // The partitionProcess will need to add events to the partitionResultsMap as they are received
-    class TestPartitionProcessor extends PartitionProcessorBase {
+    class TestPartitionProcessor extends PartitionProcessor {
       async initialize() {
         partitionResultsMap.get(this.context.partitionId)!.initialized = true;
       }
@@ -140,7 +140,7 @@ describe.only("Event Processor", function (): void {
     let didPartitionProcessorStart = false;
 
     // The partitionProcess will need to add events to the partitionResultsMap as they are received
-    class TestPartitionProcessor extends PartitionProcessorBase {
+    class TestPartitionProcessor extends PartitionProcessor {
       async initialize() {
         didPartitionProcessorStart = true;
       }
@@ -189,7 +189,7 @@ describe.only("Event Processor", function (): void {
     let didError = false;
 
     // The partitionProcess will need to add events to the partitionResultsMap as they are received
-    class TestPartitionProcessor extends PartitionProcessorBase {
+    class TestPartitionProcessor extends PartitionProcessor {
       async initialize() {
         partitionResultsMap.get(this.context.partitionId)!.initialized = true;
       }
@@ -289,7 +289,7 @@ describe.only("Event Processor", function (): void {
       let didError = false;
 
       // The partitionProcess will need to add events to the partitionResultsMap as they are received
-      class TestPartitionProcessor extends PartitionProcessorBase {
+      class TestPartitionProcessor extends PartitionProcessor {
         async initialize() {
           partitionResultsMap.get(this.context.partitionId)!.initialized = true;
         }
@@ -360,7 +360,7 @@ describe.only("Event Processor", function (): void {
       let didError = false;
 
       // The partitionProcess will need to add events to the partitionResultsMap as they are received
-      class TestPartitionProcessor extends PartitionProcessorBase {
+      class TestPartitionProcessor extends PartitionProcessor {
         async processEvents(events: ReceivedEventData[]) {
           partitionOwnerShip.add(this.context.partitionId);
           const existingEvents = partitionResultsMap.get(this.context.partitionId)!;
@@ -413,7 +413,7 @@ describe.only("Event Processor", function (): void {
       let isinitializeCalled = false;
       let isCloseCalled = false;
       let didError = false;
-      class SimpleEventProcessor extends PartitionProcessorBase {
+      class SimpleEventProcessor extends PartitionProcessor {
         async initialize() {
           isinitializeCalled = true;
           debug(`Started processing`);
@@ -526,7 +526,7 @@ describe.only("Event Processor", function (): void {
       let partitionOwnerShip = new Set();
 
       let partionCount: { [x: string]: number } = {};
-      class TestPartitionProcessor extends PartitionProcessorBase {
+      class TestPartitionProcessor extends PartitionProcessor {
         async processEvents(events: ReceivedEventData[]) {
           partitionOwnerShip.add(this.context.partitionId);
           !partionCount[this.context.partitionId]
@@ -659,7 +659,7 @@ describe.only("Event Processor", function (): void {
       let errorName = "";
 
       // The partitionProcess will need to add events to the partitionResultsMap as they are received
-      class TestPartitionProcessor extends PartitionProcessorBase {
+      class TestPartitionProcessor extends PartitionProcessor {
         async initialize() {
           partitionResultsMap.get(this.context.partitionId)!.initialized = true;
         }
@@ -766,7 +766,7 @@ describe.only("Event Processor", function (): void {
       let didError = false;
 
       // The partitionProcess will need to add events to the partitionResultsMap as they are received
-      class TestPartitionProcessor extends PartitionProcessorBase {
+      class TestPartitionProcessor extends PartitionProcessor {
         async processEvents(events: ReceivedEventData[]) {
           partitionOwnershipArr.add(this.context.partitionId);
         }
