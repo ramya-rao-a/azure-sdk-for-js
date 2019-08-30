@@ -119,13 +119,13 @@ export interface PartitionManager {
 }
 
 /**
- * A set of options to pass to the constructor of `EventProcessor`
+ * A set of options to pass to the constructor of `EventProcessor`.
+ * You can specify 
+ * - `maxBatchSize`: The max size of the batch of events passed each time to user code for processing.
+ * - `maxWaitTimeInSeconds`: The maximum amount of time to wait to build up the requested message count before
+ * passing the data to user code for processing. If not provided, it defaults to 60 seconds.
  */
 export interface EventProcessorOptions {
-  /**
-   * @property The position from where to start processing events.
-   */
-  initialEventPosition?: EventPosition;
   /**
    * The max size of the batch of events passed each time to user code for processing.
    */
@@ -139,34 +139,24 @@ export interface EventProcessorOptions {
 
 /**
  * Event Processor based application consists of one or more instances of EventProcessor which have been
- * configured to consume events from the same Event Hub and consumer group. Event Processors balance the
- * workload across different instances and track progress when events are processed.
- *
- * `EventProcessor` is a high level construct that
- * - uses an `EventHubClient` to receive events from multiple partitions in a consumer group of
- * an Event Hub instance.
- * - uses a PartitionProcessor class implemented by the user to create new processors for each partition.
- * These processors hold user code to process events.
- * - provides the ability to checkpoint and load balance across multiple instances of itself
- * using the `PartitionManager`.
+ * configured to consume events from the same Event Hub and consumer group. They balance the
+ * workload across different instances by distributing the partitions to be processed among themselves.
+ * They also allow the user to track progress when events are processed using checkpoints.
  *
  * A checkpoint is meant to represent the last successfully processed event by the user from a particular
  * partition of a consumer group in an Event Hub instance.
  *
- * By setting up multiple instances of the `EventProcessor` over different machines, the partitions will be distributed
- * for processing among the different instances. This achieves load balancing.
- *
  * You need the below to create an instance of `EventProcessor`
  * - The name of the consumer group from which you want to process events
- * - An instance of `EventHubClient` that was created for the Event Hub instance.
- * - A class that extends the `PartitionProcessor` class.
- * Note that this must be the actual class and not an instance of the class.
- * This subclass should be implemented by the user. For example:
+ * - An instance of `EventHubClient` class that was created for the Event Hub instance.
+ * - A user implemented class that extends the `PartitionProcessor` class. To get started, you can use the
+ * base class `PartitionProcessor` which simply logs the incoming events. To provide your code to process incoming
+ * events, extend this class and override the `processEvents()` method. For example:
  * class SamplePartitionProcessor extends PartitionProcessor {
  *     processEvents: (events) => {
- *        // user code here
- *        // use the context to get information on the partition
- *        // use the checkpointManager to update checkpoints if needed
+ *        // user code to process events here
+ *        // use `this.partitionContext` property to get information on the partition
+ *        // use `this.updateCheckpoint()` method to update checkpoints as needed
  *     }
  * }
  * - An instance of `PartitionManager`. To get started, you can pass an instance of `InMemoryPartitionManager`.
@@ -295,7 +285,7 @@ export class EventProcessor {
 
       const eventPosition = ownershipRequest.sequenceNumber
         ? EventPosition.fromSequenceNumber(ownershipRequest.sequenceNumber)
-        : this._processorOptions.initialEventPosition || EventPosition.earliest();
+        : EventPosition.earliest();
 
       await this._pumpManager.createPump(
         this._eventHubClient,

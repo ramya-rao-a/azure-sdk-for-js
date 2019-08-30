@@ -75,8 +75,7 @@ export class PumpManager {
     log.pumpManager(`[${this._eventProcessorName}] [${partitionId}] Creating a new pump.`);
 
     const pump = new PartitionPump(eventHubClient, partitionContext, partitionProcessor, {
-      ...this._options,
-      initialEventPosition
+      ...this._options
     });
 
     try {

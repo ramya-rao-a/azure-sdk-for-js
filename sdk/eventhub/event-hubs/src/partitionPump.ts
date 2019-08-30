@@ -55,7 +55,7 @@ export class PartitionPump {
     this._receiver = this._eventHubClient.createConsumer(
       this._partitionContext.consumerGroupName,
       partitionId,
-      this._processorOptions.initialEventPosition || EventPosition.earliest(),
+      EventPosition.earliest(),
       { ownerLevel: 0 }
     );
 
