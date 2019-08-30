@@ -152,20 +152,44 @@ export namespace ClientEntityContext {
           `The session lock has expired on the session with id ${sessionId}.`
         );
         error.name = "SessionLockLostError";
+        log.error(
+          "[%s] Failed to find receiver '%s' as the session with id '%s' is expired",
+          entityContext.namespace.connectionId,
+          name,
+          sessionId
+        );
         throw error;
       }
 
       let receiver: MessageReceiver | MessageSession | undefined = undefined;
-      if (
+      const currentSessionReceiverName =
         sessionId != null &&
         entityContext.messageSessions[sessionId] &&
-        entityContext.messageSessions[sessionId].name === name
-      ) {
+        entityContext.messageSessions[sessionId].name;
+      const currentStreamingReceiverName =
+        entityContext.streamingReceiver && entityContext.streamingReceiver.name;
+      const currentBatchingReceiverName =
+        entityContext.batchingReceiver && entityContext.batchingReceiver.name;
+
+      if (sessionId != null && currentSessionReceiverName === name) {
         receiver = entityContext.messageSessions[sessionId];
-      } else if (entityContext.streamingReceiver && entityContext.streamingReceiver.name === name) {
+      } else if (currentStreamingReceiverName === name) {
         receiver = entityContext.streamingReceiver;
-      } else if (entityContext.batchingReceiver && entityContext.batchingReceiver.name === name) {
+      } else if (currentBatchingReceiverName === name) {
         receiver = entityContext.batchingReceiver;
+      } else {
+        let existingReceivers = currentSessionReceiverName;
+        if (!existingReceivers) {
+          existingReceivers = currentStreamingReceiverName;
+          
+        }
+        
+        log.error(
+          "[%s] Failed to find receiver '%s' among existing receivers: %s",
+          entityContext.namespace.connectionId,
+          name,
+          sessionId != null ? currentSessionReceiverName : (currentStreamingReceiverName + " " + currentBatchingReceiverName)
+        );
       }
       return receiver;
     };
