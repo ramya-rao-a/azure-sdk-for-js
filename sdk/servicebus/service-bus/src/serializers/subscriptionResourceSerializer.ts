@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { AtomXmlSerializer, HttpOperationResponse } from "@azure/core-http";
+import { HttpOperationResponse } from "@azure/core-http";
 import * as Constants from "../util/constants";
-import { serializeToAtomXmlRequest, deserializeAtomXmlResponse } from "../util/atomXmlHelper";
+import { serializeToAtomXmlRequest, deserializeAtomXmlResponse, AtomXmlSerializer } from "../util/atomXmlHelper";
 import {
   getStringOrUndefined,
   getIntegerOrUndefined,
@@ -344,7 +344,7 @@ export interface Subscription extends SubscriptionOptions {
  * SubscriptionResourceSerializer for serializing / deserializing Subscription entities
  */
 export class SubscriptionResourceSerializer implements AtomXmlSerializer {
-  serialize(resource: InternalSubscriptionOptions): object {
+  serialize(resource: InternalSubscriptionOptions): string {
     return serializeToAtomXmlRequest(
       "SubscriptionDescription",
       resource,
@@ -353,7 +353,7 @@ export class SubscriptionResourceSerializer implements AtomXmlSerializer {
     );
   }
 
-  async deserialize(response: HttpOperationResponse): Promise<HttpOperationResponse> {
+  async deserialize(response: HttpOperationResponse): Promise<void> {
     return deserializeAtomXmlResponse(["TopicName", "SubscriptionName"], response);
   }
 }

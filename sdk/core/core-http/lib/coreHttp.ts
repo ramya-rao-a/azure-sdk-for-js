@@ -106,3 +106,4 @@ export { ServiceClientCredentials } from "./credentials/serviceClientCredentials
 export { TopicCredentials } from "./credentials/topicCredentials";
 export { Authenticator } from "./credentials/credentials";
 export * from "@azure/core-tracing";
+export { parseXML, stringifyXML } from "./util/xml";

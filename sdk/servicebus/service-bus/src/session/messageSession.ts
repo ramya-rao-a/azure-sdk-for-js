@@ -1110,10 +1110,9 @@ export class MessageSession extends LinkEntity {
         let msg: string = "[%s] Setting the wait timer for %d seconds for receiver '%s'.";
         if (reuse) msg += " Receiver link already present, hence reusing it.";
         log.batching(msg, this._context.namespace.connectionId, idleTimeoutInSeconds, this.name);
-        totalWaitTimer = setTimeout(
-          actionAfterWaitTimeout,
-          (idleTimeoutInSeconds as number) * 1000
-        );
+        totalWaitTimer = setTimeout(() => {
+          actionAfterWaitTimeout();
+        }, (idleTimeoutInSeconds as number) * 1000);
       };
 
       if (this.isOpen()) {

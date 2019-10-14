@@ -2,14 +2,22 @@
 // Licensed under the MIT License.
 
 import {
-  Constants as CoreHttpConstants,
   HttpOperationResponse,
   RestError,
   stripRequest,
-  stripResponse
+  stripResponse,
+  parseXML,
+  stringifyXML
 } from "@azure/core-http";
 
 import * as ServiceBusConstants from "./constants";
+
+export interface AtomXmlSerializer {
+  serialize(requestBodyInJson: { [key: string]: any }): string;
+
+  deserialize(response: HttpOperationResponse): Promise<void>;
+}
+
 /**
  * Serializes input information to construct the Atom XML request
  * @param resourceName
@@ -22,7 +30,7 @@ export function serializeToAtomXmlRequest(
   resource: any,
   properties: string[],
   xmlNamespace: string
-): object {
+): string {
   const content: any = {};
   content[resourceName] = {
     $: {
@@ -38,16 +46,15 @@ export function serializeToAtomXmlRequest(
       }
     });
   }
-  content[CoreHttpConstants.XML_METADATA_MARKER] = { type: "application/xml" };
-  return {
-    entry: {
-      $: {
-        xmlns: "http://www.w3.org/2005/Atom"
-      },
-      updated: new Date().toISOString(),
-      content: content
-    }
+  content[ServiceBusConstants.XML_METADATA_MARKER] = { type: "application/xml" };
+  const serializedContentInJSON = {
+    $: {
+      xmlns: "http://www.w3.org/2005/Atom"
+    },
+    updated: new Date().toISOString(),
+    content: content
   };
+  return stringifyXML(serializedContentInJSON, { rootName: "entry"});
 }
 
 /**
@@ -60,7 +67,11 @@ export function serializeToAtomXmlRequest(
 export async function deserializeAtomXmlResponse(
   nameProperties: string[],
   response: HttpOperationResponse
-): Promise<HttpOperationResponse> {
+): Promise<void> {
+  if (response.bodyAsText) {
+    response.parsedBody = await parseXML(response.bodyAsText, { includeRoot: true });
+  }
+
   let errorBody: any;
 
   // If received data is a non-valid HTTP response, the body is expected to contain error information
@@ -90,7 +101,6 @@ export async function deserializeAtomXmlResponse(
   }
 
   response.parsedBody = parseAtomResult(response.parsedBody, nameProperties);
-  return response;
 }
 
 /**
@@ -148,18 +158,18 @@ function parseEntryResult(entry: any): object | undefined {
   }
 
   const contentElementNames = Object.keys(entry.content).filter(function(key) {
-    return key !== CoreHttpConstants.XML_METADATA_MARKER;
+    return key !== ServiceBusConstants.XML_METADATA_MARKER;
   });
 
   if (contentElementNames && contentElementNames[0]) {
     const contentRootElementName = contentElementNames[0];
-    delete entry.content[contentRootElementName][CoreHttpConstants.XML_METADATA_MARKER];
+    delete entry.content[contentRootElementName][ServiceBusConstants.XML_METADATA_MARKER];
     result = entry.content[contentRootElementName];
 
     if (result) {
-      if (entry[CoreHttpConstants.XML_METADATA_MARKER]) {
+      if (entry[ServiceBusConstants.XML_METADATA_MARKER]) {
         result[ServiceBusConstants.ATOM_METADATA_MARKER] =
-          entry[CoreHttpConstants.XML_METADATA_MARKER];
+          entry[ServiceBusConstants.XML_METADATA_MARKER];
       } else {
         result[ServiceBusConstants.ATOM_METADATA_MARKER] = {};
       }
@@ -169,7 +179,7 @@ function parseEntryResult(entry: any): object | undefined {
       ] = contentRootElementName;
 
       Object.keys(entry).forEach((property: string) => {
-        if (property !== "content" && property !== CoreHttpConstants.XML_METADATA_MARKER) {
+        if (property !== "content" && property !== ServiceBusConstants.XML_METADATA_MARKER) {
           result[ServiceBusConstants.ATOM_METADATA_MARKER][property] = entry[property];
         }
       });
@@ -281,12 +291,12 @@ export function buildError(errorBody: any, response: HttpOperationResponse): Res
       Object.keys(errorProperties).forEach((property: any) => {
         {
           let value = null;
-          if (property !== CoreHttpConstants.XML_METADATA_MARKER) {
+          if (property !== ServiceBusConstants.XML_METADATA_MARKER) {
             if (
               errorProperties[property] &&
-              errorProperties[property][CoreHttpConstants.XML_VALUE_MARKER]
+              errorProperties[property][ServiceBusConstants.XML_VALUE_MARKER]
             ) {
-              value = errorProperties[property][CoreHttpConstants.XML_VALUE_MARKER];
+              value = errorProperties[property][ServiceBusConstants.XML_VALUE_MARKER];
             } else {
               value = errorProperties[property];
             }

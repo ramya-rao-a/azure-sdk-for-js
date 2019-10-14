@@ -2,12 +2,18 @@
 // Licensed under the MIT License.
 
 const parser = new DOMParser();
-export function parseXML(str: string): Promise<any> {
+/**
+ * Converts given XML string into JSON
+ * @param str String containg the XML content to be parsed into JSON
+ * @param opts Options that govern the parsing of given xml string.
+ * `includeRoot` indicates whether the root element is to be included or not in the output
+ */
+export function parseXML(str: string, opts?: { includeRoot?: boolean }): Promise<any> {
   try {
     const dom = parser.parseFromString(str, "application/xml");
     throwIfError(dom);
 
-    const obj = domToObject(dom.childNodes[0]);
+    const obj = domToObject((opts && opts.includeRoot) ? dom : dom.childNodes[0]);
     return Promise.resolve(obj);
   } catch (err) {
     return Promise.reject(err);
@@ -98,6 +104,12 @@ function domToObject(node: Node): any {
 const doc = document.implementation.createDocument(null, null, null);
 const serializer = new XMLSerializer();
 
+/**
+ * Converts given JSON object to XML string
+ * @param obj JSON object to be converted into XML string
+ * @param opts Options that govern the parsing of given JSON object.
+ * `rootName` indicates the name of the root element in the resulting XML
+ */
 export function stringifyXML(obj: any, opts?: { rootName?: string }) {
   const rootName = (opts && opts.rootName) || "root";
   const dom = buildNode(obj, rootName)[0];
@@ -117,9 +129,9 @@ function buildAttributes(attrs: { [key: string]: { toString(): string } }): Attr
 }
 
 function buildNode(obj: any, elementName: string): Node[] {
-  if (typeof obj === "string" || typeof obj === "number" || typeof obj === "boolean") {
+  if (typeof obj === "string" || typeof obj === "number" || typeof obj === "boolean" || obj == undefined) {
     const elem = doc.createElement(elementName);
-    elem.textContent = obj.toString();
+    elem.textContent = obj == undefined ? "" : obj.toString();
     return [elem];
   } else if (Array.isArray(obj)) {
     const result = [];
@@ -136,6 +148,8 @@ function buildNode(obj: any, elementName: string): Node[] {
         for (const attr of buildAttributes(obj[key])) {
           elem.attributes.setNamedItem(attr);
         }
+      } else if (key === "_") {
+        elem.textContent = obj[key].toString();
       } else {
         for (const child of buildNode(obj[key], key)) {
           elem.appendChild(child);

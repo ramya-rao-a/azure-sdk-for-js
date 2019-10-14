@@ -9,13 +9,11 @@ import {
   signingPolicy,
   logPolicy,
   proxyPolicy,
-  atomSerializationPolicy,
   RequestPolicyFactory,
-  AtomXmlSerializer,
   URLBuilder,
   ProxySettings
 } from "@azure/core-http";
-
+import { AtomXmlSerializer } from "./util/atomXmlHelper";
 import * as log from "./log";
 import { SasServiceClientCredentials } from "./util/sasServiceClientCredentials";
 import * as Constants from "./util/constants";
@@ -272,7 +270,6 @@ export class ServiceBusAtomManagementClient extends ServiceClient {
 
     const requestPolicyFactories: RequestPolicyFactory[] = [];
     requestPolicyFactories.push(logPolicy(log.httpAtomXml));
-    requestPolicyFactories.push(atomSerializationPolicy());
     requestPolicyFactories.push(signingPolicy(credentials));
 
     if (options && options.proxySettings) {
@@ -729,18 +726,16 @@ export class ServiceBusAtomManagementClient extends ServiceClient {
     isUpdate: boolean = false
   ): Promise<HttpOperationResponse> {
     const webResource: WebResource = new WebResource(this.getUrl(name), "PUT");
-    webResource.body = JSON.stringify(entityFields);
+    webResource.body = serializer.serialize(entityFields);
     if (isUpdate) {
       webResource.headers.set("If-Match", "*");
     }
     webResource.headers.set("content-type", "application/atom+xml;type=entry;charset=utf-8");
     webResource.headers.set("content-length", Buffer.byteLength(webResource.body));
 
-    webResource.atomXmlOperationSpec = {
-      serializer: serializer
-    };
-
-    return this.sendRequest(webResource);
+    const response = await this.sendRequest(webResource);
+    await serializer.deserialize(response);
+    return response;
   }
 
   /**
@@ -754,11 +749,9 @@ export class ServiceBusAtomManagementClient extends ServiceClient {
   ): Promise<HttpOperationResponse> {
     const webResource: WebResource = new WebResource(this.getUrl(name), "GET");
 
-    webResource.atomXmlOperationSpec = {
-      serializer: serializer
-    };
-
-    return this.sendRequest(webResource);
+    const response = await this.sendRequest(webResource);
+    await serializer.deserialize(response);
+    return response;
   }
 
   /**
@@ -784,11 +777,9 @@ export class ServiceBusAtomManagementClient extends ServiceClient {
 
     const webResource: WebResource = new WebResource(this.getUrl(name, queryParams), "GET");
 
-    webResource.atomXmlOperationSpec = {
-      serializer: serializer
-    };
-
-    return this.sendRequest(webResource);
+    const response = await this.sendRequest(webResource);
+    await serializer.deserialize(response);
+    return response;
   }
 
   /**
@@ -801,11 +792,9 @@ export class ServiceBusAtomManagementClient extends ServiceClient {
   ): Promise<HttpOperationResponse> {
     const webResource: WebResource = new WebResource(this.getUrl(name), "DELETE");
 
-    webResource.atomXmlOperationSpec = {
-      serializer: serializer
-    };
-
-    return this.sendRequest(webResource);
+    const response = await this.sendRequest(webResource);
+    await serializer.deserialize(response);
+    return response;
   }
 
   private getUrl(path: string, queryParams?: { [key: string]: string }): string {

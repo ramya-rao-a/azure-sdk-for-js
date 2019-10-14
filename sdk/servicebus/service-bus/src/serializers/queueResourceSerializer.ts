@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { AtomXmlSerializer, HttpOperationResponse } from "@azure/core-http";
+import { HttpOperationResponse } from "@azure/core-http";
 import * as Constants from "../util/constants";
-import { serializeToAtomXmlRequest, deserializeAtomXmlResponse } from "../util/atomXmlHelper";
+import { serializeToAtomXmlRequest, deserializeAtomXmlResponse, AtomXmlSerializer } from "../util/atomXmlHelper";
 import {
   getStringOrUndefined,
   getIntegerOrUndefined,
@@ -387,7 +387,7 @@ export interface Queue extends QueueOptions {
  * Atom XML Serializer for Queues.
  */
 export class QueueResourceSerializer implements AtomXmlSerializer {
-  serialize(resource: InternalQueueOptions): object {
+  serialize(resource: InternalQueueOptions): string {
     return serializeToAtomXmlRequest(
       "QueueDescription",
       resource,
@@ -396,7 +396,7 @@ export class QueueResourceSerializer implements AtomXmlSerializer {
     );
   }
 
-  async deserialize(response: HttpOperationResponse): Promise<HttpOperationResponse> {
+  async deserialize(response: HttpOperationResponse): Promise<void> {
     return deserializeAtomXmlResponse(["QueueName"], response);
   }
 }

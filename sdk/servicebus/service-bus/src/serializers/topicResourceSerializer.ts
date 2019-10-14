@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { AtomXmlSerializer, HttpOperationResponse } from "@azure/core-http";
+import { HttpOperationResponse } from "@azure/core-http";
 import * as Constants from "../util/constants";
-import { serializeToAtomXmlRequest, deserializeAtomXmlResponse } from "../util/atomXmlHelper";
+import { serializeToAtomXmlRequest, deserializeAtomXmlResponse, AtomXmlSerializer } from "../util/atomXmlHelper";
 import {
   getStringOrUndefined,
   getIntegerOrUndefined,
@@ -423,7 +423,7 @@ export interface Topic extends TopicOptions {
  * @ignore TopicResourceSerializer for serializing / deserializing Topic entities
  */
 export class TopicResourceSerializer implements AtomXmlSerializer {
-  serialize(resource: InternalTopicOptions): object {
+  serialize(resource: InternalTopicOptions): string {
     return serializeToAtomXmlRequest(
       "TopicDescription",
       resource,
@@ -431,7 +431,7 @@ export class TopicResourceSerializer implements AtomXmlSerializer {
       Constants.XML_NAMESPACE
     );
   }
-  async deserialize(response: HttpOperationResponse): Promise<HttpOperationResponse> {
+  async deserialize(response: HttpOperationResponse): Promise<void> {
     return deserializeAtomXmlResponse(["TopicName"], response);
   }
 }

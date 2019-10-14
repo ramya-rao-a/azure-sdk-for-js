@@ -315,3 +315,20 @@ export const HttpResponseCodes = {
   411: "LengthRequired",
   412: "PreconditionFailed"
 };
+
+
+  /**
+    * Marker for atom metadata.
+    *
+    * @const
+    * @type {string}
+    */
+   export const XML_METADATA_MARKER = "$";
+
+    /**
+    * Marker for atom value.
+    *
+    * @const
+    * @type {string}
+    */
+   export const XML_VALUE_MARKER = "_";
