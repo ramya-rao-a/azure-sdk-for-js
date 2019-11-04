@@ -12,7 +12,7 @@ import TestClient from "./utils/testClient";
 import { SecretClient } from "@azure/keyvault-secrets";
 import { ClientSecretCredential } from "@azure/identity";
 
-describe("Certificates client - merge and import certificates", () => {
+describe.only("Certificates client - merge and import certificates", () => {
   const prefix = `merge${env.CERTIFICATE_NAME || "CertificateName"}`;
   let suffix: string;
   let client: CertificateClient;
