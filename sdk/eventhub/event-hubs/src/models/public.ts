@@ -46,7 +46,7 @@ export interface SendBatchOptions extends OperationOptions {}
  * @internal
  * @ignore
  */
-export interface SendOptions extends SendBatchOptions {
+export interface InternalSendOptions extends SendBatchOptions {
   /**
    * @property
    * A value that is hashed to produce a partition assignment.
@@ -112,6 +112,22 @@ export interface EventHubClientOptions {
 }
 
 /**
+ * Set of options when sending events
+ */
+export interface SendOptions extends OperationOptions {
+  /**
+   * A value that is hashed to produce a partition assignment. It guarantees that messages
+   * with the same partitionKey end up in the same partition.
+   * If this value is set then partitionId can not be set.
+   */
+  partitionKey?: string;
+  /**
+   * The partition to which messages are to be sent to.
+   * If this value is set then partitionKey can not be set.
+   */
+  partitionId?: string;
+}
+/**
  * Options to configure the `createBatch` method on the `EventHubProducerClient`.
  * - `partitionKey`  : A value that is hashed to produce a partition assignment.
  * - `maxSizeInBytes`: The upper limit for the size of batch.
@@ -125,18 +141,7 @@ export interface EventHubClientOptions {
  * }
  * ```
  */
-export interface CreateBatchOptions extends OperationOptions {
-  /**
-   * A value that is hashed to produce a partition assignment. It guarantees that messages
-   * with the same partitionKey end up in the same partition.
-   * If this value is set then partitionId can not be set.
-   */
-  partitionKey?: string;
-  /**
-   * The partition this batch will be sent to.
-   * If this value is set then partitionKey can not be set.
-   */
-  partitionId?: string;
+export interface CreateBatchOptions extends SendOptions {
   /**
    * @property
    * The upper limit for the size of batch. The `tryAdd` function will return `false` after this limit is reached.

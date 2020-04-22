@@ -9,6 +9,7 @@ export { LastEnqueuedEventProperties } from "./eventHubReceiver";
 export { OperationOptions } from "./util/operationOptions";
 export {
   EventHubClientOptions,
+  SendOptions,
   SendBatchOptions,
   CreateBatchOptions,
   GetPartitionIdsOptions,

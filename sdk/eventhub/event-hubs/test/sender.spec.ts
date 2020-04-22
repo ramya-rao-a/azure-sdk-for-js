@@ -9,7 +9,7 @@ import debugModule from "debug";
 const debug = debugModule("azure:event-hubs:sender-spec");
 import { EventData, EventHubProducerClient, EventHubConsumerClient } from "../src";
 import { EventHubClient } from "../src/impl/eventHubClient";
-import { SendOptions } from "../src/models/public";
+import { InternalSendOptions } from "../src/models/public";
 import { EnvVarKeys, getEnvVars } from "./utils/testUtils";
 import { AbortController } from "@azure/abort-controller";
 import { TestTracer, setTracer, SpanGraph } from "@azure/core-tracing";
@@ -890,20 +890,20 @@ describe("EventHub Sender", function(): void {
   async function sendBatch(
     bodies: any[],
     partitionId: string,
-    options?: SendOptions
+    options?: InternalSendOptions
   ): Promise<void>;
-  async function sendBatch(bodies: any[], options?: SendOptions): Promise<void>;
+  async function sendBatch(bodies: any[], options?: InternalSendOptions): Promise<void>;
   async function sendBatch(
     bodies1: any[],
-    partitionIdOrOptions2: string | SendOptions | undefined,
-    options3?: SendOptions
+    partitionIdOrOptions2: string | InternalSendOptions | undefined,
+    options3?: InternalSendOptions
   ): Promise<void> {
-    let sendOptions: SendOptions | undefined = options3;
+    let sendOptions: InternalSendOptions | undefined = options3;
 
     let partitionId: string | undefined = undefined;
 
     if (typeof partitionIdOrOptions2 !== "string") {
-      sendOptions = partitionIdOrOptions2 as SendOptions;
+      sendOptions = partitionIdOrOptions2 as InternalSendOptions;
     } else {
       partitionId = partitionIdOrOptions2;
       sendOptions = options3;

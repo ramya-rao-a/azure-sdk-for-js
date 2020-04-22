@@ -26,7 +26,7 @@ import { EventData, toAmqpMessage } from "./eventData";
 import { ConnectionContext } from "./connectionContext";
 import { LinkEntity } from "./linkEntity";
 import { EventHubProducerOptions } from "./models/private";
-import { SendOptions } from "./models/public";
+import { InternalSendOptions } from "./models/public";
 
 import { getRetryAttemptTimeoutInMs } from "./util/retries";
 import { AbortSignalLike, AbortError } from "@azure/abort-controller";
@@ -287,7 +287,7 @@ export class EventHubSender extends LinkEntity {
    */
   async send(
     events: EventData[] | EventDataBatch,
-    options?: SendOptions & EventHubProducerOptions
+    options?: InternalSendOptions & EventHubProducerOptions
   ): Promise<void> {
     try {
       // throw an error if partition key and partition id are both defined
@@ -408,7 +408,7 @@ export class EventHubSender extends LinkEntity {
    */
   private _trySendBatch(
     message: AmqpMessage | Buffer,
-    options: SendOptions & EventHubProducerOptions = {}
+    options: InternalSendOptions & EventHubProducerOptions = {}
   ): Promise<void> {
     const abortSignal: AbortSignalLike | undefined = options.abortSignal;
     const retryOptions = options.retryOptions || {};

@@ -12,8 +12,10 @@ import {
   GetPartitionIdsOptions,
   GetPartitionPropertiesOptions,
   EventHubClientOptions,
-  CreateBatchOptions
+  CreateBatchOptions,
+  SendOptions
 } from "./models/public";
+import { EventData } from './eventData';
 
 /**
  * The `EventHubProducerClient` class is used to send events to an Event Hub.
@@ -159,6 +161,17 @@ export class EventHubProducerClient {
     return producer.createBatch(options);
   }
 
+  /**
+   * Send events to the associated Event Hub
+   * 
+   * @param eventData An array of events to send
+   * @param options A set of options that can be specified to influence the way in which
+   * events are sent to the associated Event Hub.
+   * - `abortSignal`  : A signal the request to cancel the send operation.
+   */
+  async send(eventData: EventData[], options?: SendOptions): Promise<void> {
+
+  }
   /**
    * Sends a batch of events to the associated Event Hub.
    *

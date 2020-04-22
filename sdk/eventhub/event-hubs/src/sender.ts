@@ -4,7 +4,7 @@
 import { EventData } from "./eventData";
 import { EventHubSender } from "./eventHubSender";
 import { EventHubProducerOptions } from "../src/models/private";
-import { SendOptions, CreateBatchOptions } from "../src/models/public";
+import { InternalSendOptions, CreateBatchOptions } from "../src/models/public";
 import { ConnectionContext } from "./connectionContext";
 import { logger, logErrorStackTrace } from "./log";
 import { throwErrorIfConnectionClosed, throwTypeErrorIfParameterMissing } from "./util/error";
@@ -163,7 +163,7 @@ export class EventHubProducer {
    */
   async send(
     eventData: EventData | EventData[] | EventDataBatch,
-    options: SendOptions = {}
+    options: InternalSendOptions = {}
   ): Promise<void> {
     this._throwIfSenderOrConnectionClosed();
     throwTypeErrorIfParameterMissing(this._context.connectionId, "send", "eventData", eventData);
