@@ -39,10 +39,8 @@ export enum CloseReason {
 }
 
 // @public
-export interface CreateBatchOptions extends OperationOptions {
+export interface CreateBatchOptions extends SendOptions {
     maxSizeInBytes?: number;
-    partitionId?: string;
-    partitionKey?: string;
 }
 
 // @public
@@ -58,6 +56,7 @@ export interface EventData {
 
 // @public
 export interface EventDataBatch {
+    clear(): void;
     readonly count: number;
     readonly maxSizeInBytes: number;
     // @internal
@@ -110,6 +109,7 @@ export class EventHubProducerClient {
     getEventHubProperties(options?: GetEventHubPropertiesOptions): Promise<EventHubProperties>;
     getPartitionIds(options?: GetPartitionIdsOptions): Promise<Array<string>>;
     getPartitionProperties(partitionId: string, options?: GetPartitionPropertiesOptions): Promise<PartitionProperties>;
+    send(eventData: EventData[], options?: SendOptions): Promise<void>;
     sendBatch(batch: EventDataBatch, options?: SendBatchOptions): Promise<void>;
 }
 
@@ -225,6 +225,12 @@ export { RetryOptions }
 
 // @public
 export interface SendBatchOptions extends OperationOptions {
+}
+
+// @public
+export interface SendOptions extends OperationOptions {
+    partitionId?: string;
+    partitionKey?: string;
 }
 
 // @public

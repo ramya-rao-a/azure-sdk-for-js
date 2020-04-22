@@ -84,8 +84,8 @@ export async function main(): Promise<void> {
       await producer.sendBatch(batch);
       numEventsSent += batch.count;
 
-      // and create a new one to house the next set of messages
-      batch = await producer.createBatch(batchOptions);
+      // clear the batch to house the next set of messages
+      batch.clear();
     }
 
     // send any remaining messages, if any.
@@ -100,6 +100,14 @@ export async function main(): Promise<void> {
     if (numEventsSent !== eventsToSend.length) {
       throw new Error(`Not all messages were sent (${numEventsSent}/${eventsToSend.length})`);
     }
+
+    // Alternatively, if you know beforehand that the set of events you have will not exceed the 
+    // size limits, you can use the `send()` api directly
+    const eventDataToSend = eventsToSend.map(event => {
+      return { body: event}
+    });
+    await producer.send(eventDataToSend);
+
   } catch (err) {
     console.log("Error when creating & sending a batch of events: ", err);
   }
