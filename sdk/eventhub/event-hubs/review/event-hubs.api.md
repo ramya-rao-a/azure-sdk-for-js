@@ -56,7 +56,6 @@ export interface EventData {
 
 // @public
 export interface EventDataBatch {
-    clear(): void;
     readonly count: number;
     readonly maxSizeInBytes: number;
     // @internal

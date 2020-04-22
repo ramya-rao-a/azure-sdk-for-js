@@ -84,8 +84,8 @@ export async function main(): Promise<void> {
       await producer.sendBatch(batch);
       numEventsSent += batch.count;
 
-      // clear the batch to house the next set of messages
-      batch.clear();
+      // and create a new one to house the next set of messages
+      batch = await producer.createBatch(batchOptions);
     }
 
     // send any remaining messages, if any.
