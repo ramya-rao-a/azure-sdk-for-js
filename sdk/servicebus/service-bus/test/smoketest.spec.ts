@@ -1,7 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { ServiceBusReceivedMessage, ServiceBusReceiver, ServiceBusMessage, delay } from "../src";
+import {
+  ServiceBusReceivedMessage,
+  ServiceBusMessage,
+  delay,
+  ServiceBusReceiverWithNoSettlementMethods
+} from "../src";
 import { TestClientType } from "./utils/testUtils";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
@@ -473,7 +478,7 @@ async function waitAndValidate(
   expectedMessage: string,
   receivedBodies: string[],
   errors: string[],
-  receiver: ServiceBusReceiver
+  receiver: ServiceBusReceiverWithNoSettlementMethods
 ): Promise<void> {
   const maxChecks = 20;
   let numChecks = 0;

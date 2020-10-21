@@ -23,6 +23,7 @@ import {
 } from "./managementUtils";
 import chai from "chai";
 import { ServiceBusReceivedMessage, ServiceBusMessage } from "../../src/serviceBusMessage";
+import { ServiceBusReceiverWithNoSettlementMethods } from "../../src/receivers/receiver";
 
 dotenv.config();
 const env = getEnvVars();
@@ -216,7 +217,7 @@ export class ServiceBusTestHelpers {
     entityNames: EntityName,
     sentMessages: ServiceBusMessage[]
   ): Promise<void> {
-    let receiver: ServiceBusReceiver | ServiceBusSessionReceiver;
+    let receiver: ServiceBusReceiverWithNoSettlementMethods;
     let receivedMsgs: ServiceBusReceivedMessage[];
     if (!entityNames.usesSessions) {
       receiver = await this.createReceiveAndDeleteReceiver(entityNames);
@@ -326,7 +327,7 @@ export class ServiceBusTestHelpers {
   async createPeekLockReceiver(
     entityNames: Omit<ReturnType<typeof getEntityNames>, "isPartitioned">,
     options?: CreateReceiverOptions<"peekLock">
-  ): Promise<ServiceBusReceiver> {
+  ): Promise<ServiceBusReceiver | ServiceBusSessionReceiver> {
     if (entityNames.usesSessions) {
       // if you're creating a receiver this way then you'll just use the default
       // session ID for your receiver.
@@ -401,7 +402,7 @@ export class ServiceBusTestHelpers {
     entityNames: Omit<ReturnType<typeof getEntityNames>, "isPartitioned"> & {
       sessionId?: string;
     }
-  ): Promise<ServiceBusReceiver> {
+  ): Promise<ServiceBusReceiverWithNoSettlementMethods> {
     // TODO: we should generate a random ID here - there's no harm in
     // creating as many sessions as we wish. Some tests will need to change.
     const sessionId = entityNames.sessionId ?? TestMessage.sessionId;
@@ -464,7 +465,7 @@ async function purgeForTestClientType(
 ): Promise<void> {
   let receiver: ServiceBusReceiver | ServiceBusSessionReceiver | undefined;
   const entityPaths = getEntityNames(testClientType);
-  let deadLetterReceiver: ServiceBusReceiver;
+  let deadLetterReceiver: ServiceBusReceiverWithNoSettlementMethods;
 
   if (entityPaths.queue) {
     receiver = serviceBusClient.createReceiver(entityPaths.queue, "receiveAndDelete");
@@ -503,7 +504,9 @@ export function createServiceBusClientForTests(
   return serviceBusClient;
 }
 
-export async function drainReceiveAndDeleteReceiver(receiver: ServiceBusReceiver): Promise<void> {
+export async function drainReceiveAndDeleteReceiver(
+  receiver: ServiceBusReceiverWithNoSettlementMethods
+): Promise<void> {
   try {
     while (true) {
       const messages = await receiver.receiveMessages(10, { maxWaitTimeInMs: 1000 });
@@ -528,7 +531,7 @@ function connectionString() {
 }
 
 export async function testPeekMsgsLength(
-  peekableReceiver: ServiceBusReceiver,
+  peekableReceiver: ServiceBusReceiverWithNoSettlementMethods,
   expectedPeekLength: number
 ): Promise<void> {
   const peekedMsgs = await peekableReceiver.peekMessages(expectedPeekLength + 1);

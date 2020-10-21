@@ -4,7 +4,7 @@
 import { ServiceBusConnectionStringModel, SharedKeyCredential } from "@azure/core-amqp";
 import chai from "chai";
 import { parseConnectionString } from "rhea-promise";
-import { ServiceBusReceiver } from "../src/receivers/receiver";
+import { ServiceBusReceiverWithNoSettlementMethods } from "../src/receivers/receiver";
 import { ServiceBusClient } from "../src/serviceBusClient";
 import { getEnvVars } from "./utils/envVarUtils";
 import { TestClientType } from "./utils/testUtils";
@@ -59,7 +59,7 @@ type UnpackReturnType<T extends (...args: any) => any> = ReturnType<T> extends P
 
         await sender.close();
 
-        let receiver: ServiceBusReceiver;
+        let receiver: ServiceBusReceiverWithNoSettlementMethods;
 
         if (entities.queue) {
           receiver = client.createReceiver(entities.queue!, {

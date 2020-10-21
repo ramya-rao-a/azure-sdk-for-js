@@ -13,8 +13,8 @@ import { TokenCredential } from "@azure/core-http";
 import { ConnectionContext } from "../../src/connectionContext";
 import { createConnectionContextForTestsWithSessionId } from "./unittestUtils";
 import {
-  ServiceBusSessionReceiver,
-  ServiceBusSessionReceiverImpl
+  ServiceBusSessionReceiverImpl,
+  ServiceBusSessionReceiverWithNoSettlementMethods
 } from "../../src/receivers/sessionReceiver";
 import { AbortController } from "@azure/abort-controller";
 const assert = chai.assert;
@@ -56,7 +56,7 @@ describe("serviceBusClient unit tests", () => {
           origConnectionContext.config
         );
 
-        let sessionReceiver: ServiceBusSessionReceiver;
+        let sessionReceiver: ServiceBusSessionReceiverWithNoSettlementMethods;
 
         if (testEntity.queue) {
           sessionReceiver = await client.acceptSession(testEntity.queue, "a session id", {
@@ -109,7 +109,7 @@ describe("serviceBusClient unit tests", () => {
           origConnectionContext.config
         );
 
-        let sessionReceiver: ServiceBusSessionReceiver;
+        let sessionReceiver: ServiceBusSessionReceiverWithNoSettlementMethods;
 
         if (testEntity.queue) {
           sessionReceiver = await client.acceptNextSession(testEntity.queue, {

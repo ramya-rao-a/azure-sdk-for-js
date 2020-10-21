@@ -14,7 +14,11 @@ import {
 } from "../util/errors";
 import { OnError, OnMessage } from "../core/messageReceiver";
 import { assertValidMessageHandlers, getMessageIterator, wrapProcessErrorHandler } from "./shared";
-import { defaultMaxTimeAfterFirstMessageForBatchingMs, ServiceBusReceiver } from "./receiver";
+import {
+  defaultMaxTimeAfterFirstMessageForBatchingMs,
+  ServiceBusReceiverWithNoSettlementMethods,
+  MessageSettlementMethods
+} from "./receiver";
 import Long from "long";
 import { ServiceBusMessageImpl, DeadLetterOptions } from "../serviceBusMessage";
 import {
@@ -32,10 +36,15 @@ import { AmqpError } from "rhea-promise";
 import { createProcessingSpan } from "../diagnostics/instrumentServiceBusMessage";
 import { receiverLogger as logger } from "../log";
 
+export interface ServiceBusSessionReceiver
+  extends ServiceBusSessionReceiverWithNoSettlementMethods,
+    MessageSettlementMethods {}
+
 /**
  *A receiver that handles sessions, including renewing the session lock.
  */
-export interface ServiceBusSessionReceiver extends ServiceBusReceiver {
+export interface ServiceBusSessionReceiverWithNoSettlementMethods
+  extends ServiceBusReceiverWithNoSettlementMethods {
   /**
    * The session ID.
    */

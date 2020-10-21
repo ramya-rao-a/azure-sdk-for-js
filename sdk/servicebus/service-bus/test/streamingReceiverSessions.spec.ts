@@ -9,7 +9,8 @@ import { TestClientType, TestMessage, checkWithTimeout } from "./utils/testUtils
 import { DispositionType } from "../src/serviceBusMessage";
 import {
   ServiceBusSessionReceiver,
-  ServiceBusSessionReceiverImpl
+  ServiceBusSessionReceiverImpl,
+  ServiceBusSessionReceiverWithNoSettlementMethods
 } from "../src/receivers/sessionReceiver";
 import { ServiceBusReceiver } from "../src/receivers/receiver";
 import { ServiceBusSender } from "../src/sender";
@@ -51,10 +52,8 @@ describe("Streaming with sessions", () => {
   async function afterEachTest(): Promise<void> {
     await serviceBusClient.test.afterEach();
   }
-  async function beforeEachTest(
-    receiveMode?: "peekLock" | "receiveAndDelete"
-  ): Promise<EntityName> {
-    const entityNames = await createReceiverForTests(testClientType, receiveMode);
+  async function beforeEachTest(): Promise<EntityName> {
+    const entityNames = await createReceiverForTests(testClientType);
 
     sender = serviceBusClient.test.addToCleanup(
       serviceBusClient.createSender(entityNames.queue ?? entityNames.topic!)
@@ -67,26 +66,10 @@ describe("Streaming with sessions", () => {
     return entityNames;
   }
 
-  async function createReceiverForTests(
-    testClientType: TestClientType,
-    receiveMode?: "peekLock" | "receiveAndDelete"
-  ) {
+  async function createReceiverForTests(testClientType: TestClientType) {
     const entityNames = await serviceBusClient.test.createTestEntities(testClientType);
     receiver = serviceBusClient.test.addToCleanup(
-      receiveMode === "receiveAndDelete"
-        ? entityNames.queue
-          ? await serviceBusClient.acceptSession(entityNames.queue, TestMessage.sessionId, {
-              receiveMode: "receiveAndDelete"
-            })
-          : await serviceBusClient.acceptSession(
-              entityNames.topic!,
-              entityNames.subscription!,
-              TestMessage.sessionId,
-              {
-                receiveMode: "receiveAndDelete"
-              }
-            )
-        : entityNames.queue
+      entityNames.queue
         ? await serviceBusClient.acceptSession(entityNames.queue, TestMessage.sessionId)
         : await serviceBusClient.acceptSession(
             entityNames.topic!,
@@ -742,7 +725,10 @@ describe("Streaming with sessions", () => {
       await afterEachTest();
     });
 
-    async function testReceiveMessages(entityNames: EntityName): Promise<void> {
+    async function testReceiveMessages(
+      entityNames: EntityName,
+      testReceiver: ServiceBusSessionReceiverWithNoSettlementMethods
+    ): Promise<void> {
       const totalNumOfMessages = 5;
       let num = 1;
       const messages = [];
@@ -763,11 +749,10 @@ describe("Streaming with sessions", () => {
 
       const receivedMsgs: ServiceBusReceivedMessage[] = [];
 
-      receiver.subscribe(
+      testReceiver.subscribe(
         {
           async processMessage(brokeredMessage: ServiceBusReceivedMessage) {
             receivedMsgs.push(brokeredMessage);
-            await receiver.completeMessage(brokeredMessage);
           },
           processError
         },
@@ -775,7 +760,7 @@ describe("Streaming with sessions", () => {
           autoComplete: false
         }
       );
-      await receiver.close();
+      await testReceiver.close();
 
       await delay(5000);
       should.equal(
@@ -783,23 +768,36 @@ describe("Streaming with sessions", () => {
         0,
         `Expected 0 messages, but received ${receivedMsgs.length}`
       );
-      receiver = await serviceBusClient.test.acceptNextSessionWithPeekLock(entityNames);
-      await testPeekMsgsLength(receiver, totalNumOfMessages);
+      testReceiver = await serviceBusClient.test.acceptNextSessionWithPeekLock(entityNames);
+      await testPeekMsgsLength(testReceiver, totalNumOfMessages);
     }
 
     it(
       testClientType + ": Not receive messages after receiver is closed",
       async function(): Promise<void> {
         const entityNames = await beforeEachTest();
-        await testReceiveMessages(entityNames);
+        await testReceiveMessages(entityNames, receiver);
       }
     );
 
     it(
       testClientType + ": (Receive And Delete mode) Not receive messages after receiver is closed",
       async function(): Promise<void> {
-        const entityNames = await beforeEachTest("receiveAndDelete");
-        await testReceiveMessages(entityNames);
+        const entityNames = await beforeEachTest();
+        await receiver.close();
+        const receiveAndDeleteReceiver = entityNames.queue
+          ? await serviceBusClient.acceptSession(entityNames.queue, TestMessage.sessionId, {
+              receiveMode: "receiveAndDelete"
+            })
+          : await serviceBusClient.acceptSession(
+              entityNames.topic!,
+              entityNames.subscription!,
+              TestMessage.sessionId,
+              {
+                receiveMode: "receiveAndDelete"
+              }
+            );
+        await testReceiveMessages(entityNames, receiveAndDeleteReceiver);
       }
     );
   });

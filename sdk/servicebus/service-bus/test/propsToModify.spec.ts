@@ -7,10 +7,11 @@ const should = chai.should();
 import { createServiceBusClientForTests } from "./utils/testutils2";
 import { TestClientType, TestMessage } from "./utils/testUtils";
 import { ServiceBusReceivedMessage, ServiceBusReceiver } from "../src";
+import { ServiceBusReceiverWithNoSettlementMethods } from "../src/receivers/receiver";
 
 describe("dead lettering", () => {
   let serviceBusClient: ReturnType<typeof createServiceBusClientForTests>;
-  let deadLetterReceiver: ServiceBusReceiver;
+  let deadLetterReceiver: ServiceBusReceiverWithNoSettlementMethods;
   let receiver: ServiceBusReceiver;
   let receivedMessage: ServiceBusReceivedMessage;
 
@@ -47,7 +48,9 @@ describe("dead lettering", () => {
       })
     );
 
-    receiver = await serviceBusClient.test.createPeekLockReceiver(entityNames);
+    receiver = (await serviceBusClient.test.createPeekLockReceiver(
+      entityNames
+    )) as ServiceBusReceiver;
 
     const receivedMessages = await receiver.receiveMessages(1);
 
@@ -194,7 +197,9 @@ describe("abandoning", () => {
       sessionId: entityNames.usesSessions ? TestMessage.getSessionSample().sessionId : undefined
     });
 
-    receiver = await serviceBusClient.test.createPeekLockReceiver(entityNames);
+    receiver = (await serviceBusClient.test.createPeekLockReceiver(
+      entityNames
+    )) as ServiceBusReceiver;
 
     const receivedMessages = await receiver.receiveMessages(1);
 
@@ -317,7 +322,9 @@ describe("deferring", () => {
       sessionId: entityNames.usesSessions ? TestMessage.getSessionSample().sessionId : undefined
     });
 
-    receiver = await serviceBusClient.test.createPeekLockReceiver(entityNames);
+    receiver = (await serviceBusClient.test.createPeekLockReceiver(
+      entityNames
+    )) as ServiceBusReceiver;
 
     const receivedMessages = await receiver.receiveMessages(1);
 

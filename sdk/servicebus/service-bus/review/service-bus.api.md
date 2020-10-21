@@ -197,6 +197,20 @@ export interface MessageHandlers {
     processMessage(message: ServiceBusReceivedMessage): Promise<void>;
 }
 
+// @public (undocumented)
+export interface MessageSettlementMethods {
+    abandonMessage(message: ServiceBusReceivedMessage, propertiesToModify?: {
+        [key: string]: any;
+    }): Promise<void>;
+    completeMessage(message: ServiceBusReceivedMessage): Promise<void>;
+    deadLetterMessage(message: ServiceBusReceivedMessage, options?: DeadLetterOptions & {
+        [key: string]: any;
+    }): Promise<void>;
+    deferMessage(message: ServiceBusReceivedMessage, propertiesToModify?: {
+        [key: string]: any;
+    }): Promise<void>;
+}
+
 export { MessagingError }
 
 // @public
@@ -338,16 +352,16 @@ export class ServiceBusClient {
     constructor(connectionString: string, options?: ServiceBusClientOptions);
     constructor(fullyQualifiedNamespace: string, credential: TokenCredential, options?: ServiceBusClientOptions);
     acceptNextSession(queueName: string, options?: AcceptSessionOptions<"peekLock">): Promise<ServiceBusSessionReceiver>;
-    acceptNextSession(queueName: string, options: AcceptSessionOptions<"receiveAndDelete">): Promise<ServiceBusSessionReceiver>;
+    acceptNextSession(queueName: string, options: AcceptSessionOptions<"receiveAndDelete">): Promise<ServiceBusSessionReceiverWithNoSettlementMethods>;
     acceptNextSession(topicName: string, subscriptionName: string, options?: AcceptSessionOptions<"peekLock">): Promise<ServiceBusSessionReceiver>;
-    acceptNextSession(topicName: string, subscriptionName: string, options: AcceptSessionOptions<"receiveAndDelete">): Promise<ServiceBusSessionReceiver>;
+    acceptNextSession(topicName: string, subscriptionName: string, options: AcceptSessionOptions<"receiveAndDelete">): Promise<ServiceBusSessionReceiverWithNoSettlementMethods>;
     acceptSession(queueName: string, sessionId: string, options?: AcceptSessionOptions<"peekLock">): Promise<ServiceBusSessionReceiver>;
-    acceptSession(queueName: string, sessionId: string, options: AcceptSessionOptions<"receiveAndDelete">): Promise<ServiceBusSessionReceiver>;
+    acceptSession(queueName: string, sessionId: string, options: AcceptSessionOptions<"receiveAndDelete">): Promise<ServiceBusSessionReceiverWithNoSettlementMethods>;
     acceptSession(topicName: string, subscriptionName: string, sessionId: string, options?: AcceptSessionOptions<"peekLock">): Promise<ServiceBusSessionReceiver>;
-    acceptSession(topicName: string, subscriptionName: string, sessionId: string, options: AcceptSessionOptions<"receiveAndDelete">): Promise<ServiceBusSessionReceiver>;
+    acceptSession(topicName: string, subscriptionName: string, sessionId: string, options: AcceptSessionOptions<"receiveAndDelete">): Promise<ServiceBusSessionReceiverWithNoSettlementMethods>;
     close(): Promise<void>;
     createReceiver(queueName: string, options?: CreateReceiverOptions<"peekLock">): ServiceBusReceiver;
-    createReceiver(queueName: string, options: CreateReceiverOptions<"receiveAndDelete">): ServiceBusReceiver;
+    createReceiver(queueName: string, options: CreateReceiverOptions<"receiveAndDelete">): ServiceBusReceiverWithNoSettlementMethods;
     createReceiver(topicName: string, subscriptionName: string, options?: CreateReceiverOptions<"peekLock">): ServiceBusReceiver;
     createReceiver(topicName: string, subscriptionName: string, options: CreateReceiverOptions<"receiveAndDelete">): ServiceBusReceiver;
     createSender(queueOrTopicName: string): ServiceBusSender;
@@ -409,19 +423,14 @@ export interface ServiceBusReceivedMessage extends ServiceBusMessage {
     readonly sequenceNumber?: Long;
 }
 
+// @public (undocumented)
+export interface ServiceBusReceiver extends ServiceBusReceiverWithNoSettlementMethods, MessageSettlementMethods {
+    renewMessageLock(message: ServiceBusReceivedMessage): Promise<Date>;
+}
+
 // @public
-export interface ServiceBusReceiver {
-    abandonMessage(message: ServiceBusReceivedMessage, propertiesToModify?: {
-        [key: string]: any;
-    }): Promise<void>;
+export interface ServiceBusReceiverWithNoSettlementMethods {
     close(): Promise<void>;
-    completeMessage(message: ServiceBusReceivedMessage): Promise<void>;
-    deadLetterMessage(message: ServiceBusReceivedMessage, options?: DeadLetterOptions & {
-        [key: string]: any;
-    }): Promise<void>;
-    deferMessage(message: ServiceBusReceivedMessage, propertiesToModify?: {
-        [key: string]: any;
-    }): Promise<void>;
     entityPath: string;
     getMessageIterator(options?: GetMessageIteratorOptions): AsyncIterableIterator<ServiceBusReceivedMessage>;
     isClosed: boolean;
@@ -429,7 +438,6 @@ export interface ServiceBusReceiver {
     receiveDeferredMessages(sequenceNumbers: Long | Long[], options?: OperationOptionsBase): Promise<ServiceBusReceivedMessage[]>;
     receiveMessages(maxMessageCount: number, options?: ReceiveMessagesOptions): Promise<ServiceBusReceivedMessage[]>;
     receiveMode: "peekLock" | "receiveAndDelete";
-    renewMessageLock(message: ServiceBusReceivedMessage): Promise<Date>;
     subscribe(handlers: MessageHandlers, options?: SubscribeOptions): {
         close(): Promise<void>;
     };
@@ -447,8 +455,12 @@ export interface ServiceBusSender {
     sendMessages(messages: ServiceBusMessage | ServiceBusMessage[] | ServiceBusMessageBatch, options?: OperationOptionsBase): Promise<void>;
 }
 
+// @public (undocumented)
+export interface ServiceBusSessionReceiver extends ServiceBusSessionReceiverWithNoSettlementMethods, MessageSettlementMethods {
+}
+
 // @public
-export interface ServiceBusSessionReceiver extends ServiceBusReceiver {
+export interface ServiceBusSessionReceiverWithNoSettlementMethods extends ServiceBusReceiverWithNoSettlementMethods {
     getSessionState(options?: OperationOptionsBase): Promise<any>;
     renewSessionLock(options?: OperationOptionsBase): Promise<Date>;
     readonly sessionId: string;

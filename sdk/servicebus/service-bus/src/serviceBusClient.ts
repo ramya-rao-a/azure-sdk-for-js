@@ -9,10 +9,15 @@ import {
 } from "./constructorHelpers";
 import { ConnectionContext } from "./connectionContext";
 import { CreateReceiverOptions, AcceptSessionOptions, ReceiveMode } from "./models";
-import { ServiceBusReceiver, ServiceBusReceiverImpl } from "./receivers/receiver";
+import {
+  ServiceBusReceiver,
+  ServiceBusReceiverImpl,
+  ServiceBusReceiverWithNoSettlementMethods
+} from "./receivers/receiver";
 import {
   ServiceBusSessionReceiver,
-  ServiceBusSessionReceiverImpl
+  ServiceBusSessionReceiverImpl,
+  ServiceBusSessionReceiverWithNoSettlementMethods
 } from "./receivers/sessionReceiver";
 import { ServiceBusSender, ServiceBusSenderImpl } from "./sender";
 import { entityPathMisMatchError } from "./util/errors";
@@ -143,7 +148,7 @@ export class ServiceBusClient {
   createReceiver(
     queueName: string,
     options: CreateReceiverOptions<"receiveAndDelete">
-  ): ServiceBusReceiver;
+  ): ServiceBusReceiverWithNoSettlementMethods;
   /**
    * Creates a receiver for an Azure Service Bus subscription in peekLock mode. No connection is made
    * to the service until one of the methods on the receiver is called.
@@ -205,7 +210,7 @@ export class ServiceBusClient {
       | CreateReceiverOptions<"peekLock">
       | string,
     options3?: CreateReceiverOptions<"receiveAndDelete"> | CreateReceiverOptions<"peekLock">
-  ): ServiceBusReceiver {
+  ): ServiceBusReceiver | ServiceBusReceiverWithNoSettlementMethods {
     validateEntityPath(this._connectionContext.config, queueOrTopicName1);
 
     // NOTE: we don't currently have any options for this kind of receiver but
@@ -298,7 +303,7 @@ export class ServiceBusClient {
     queueName: string,
     sessionId: string,
     options: AcceptSessionOptions<"receiveAndDelete">
-  ): Promise<ServiceBusSessionReceiver>;
+  ): Promise<ServiceBusSessionReceiverWithNoSettlementMethods>;
   /**
    * Creates a receiver for a session enabled Azure Service Bus subscription in peekLock mode.
    * If the receiveMode is not provided in the options, it defaults to the "peekLock" mode.
@@ -345,7 +350,7 @@ export class ServiceBusClient {
     subscriptionName: string,
     sessionId: string,
     options: AcceptSessionOptions<"receiveAndDelete">
-  ): Promise<ServiceBusSessionReceiver>;
+  ): Promise<ServiceBusSessionReceiverWithNoSettlementMethods>;
   async acceptSession(
     queueOrTopicName1: string,
     optionsOrSubscriptionNameOrSessionId2?:
@@ -357,7 +362,7 @@ export class ServiceBusClient {
       | AcceptSessionOptions<"receiveAndDelete">
       | string,
     options4?: AcceptSessionOptions<"peekLock"> | AcceptSessionOptions<"receiveAndDelete">
-  ): Promise<ServiceBusSessionReceiver> {
+  ): Promise<ServiceBusSessionReceiver | ServiceBusSessionReceiverWithNoSettlementMethods> {
     validateEntityPath(this._connectionContext.config, queueOrTopicName1);
 
     let sessionId: string;
@@ -460,7 +465,7 @@ export class ServiceBusClient {
   acceptNextSession(
     queueName: string,
     options: AcceptSessionOptions<"receiveAndDelete">
-  ): Promise<ServiceBusSessionReceiver>;
+  ): Promise<ServiceBusSessionReceiverWithNoSettlementMethods>;
   /**
    * Creates a receiver for the next available session in a session-enabled Azure Service Bus subscription in peekLock mode.
    * If the receiveMode is not provided in the options, it defaults to the "peekLock" mode.
@@ -503,7 +508,7 @@ export class ServiceBusClient {
     topicName: string,
     subscriptionName: string,
     options: AcceptSessionOptions<"receiveAndDelete">
-  ): Promise<ServiceBusSessionReceiver>;
+  ): Promise<ServiceBusSessionReceiverWithNoSettlementMethods>;
   async acceptNextSession(
     queueOrTopicName1: string,
     optionsOrSubscriptionName2?:
@@ -511,7 +516,7 @@ export class ServiceBusClient {
       | AcceptSessionOptions<"receiveAndDelete">
       | string,
     options3?: AcceptSessionOptions<"peekLock"> | AcceptSessionOptions<"receiveAndDelete">
-  ): Promise<ServiceBusSessionReceiver> {
+  ): Promise<ServiceBusSessionReceiver | ServiceBusSessionReceiverWithNoSettlementMethods> {
     validateEntityPath(this._connectionContext.config, queueOrTopicName1);
 
     const { entityPath, receiveMode, options } = extractReceiverArguments(

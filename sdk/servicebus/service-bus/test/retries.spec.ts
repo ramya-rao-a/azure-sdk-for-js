@@ -306,7 +306,7 @@ describe("Retries - MessageSender", () => {
 });
 
 describe("Retries - Receive methods", () => {
-  let receiver: ServiceBusReceiver;
+  let receiver: ServiceBusReceiver | ServiceBusSessionReceiver;
   let serviceBusClient: ServiceBusClientForTests;
   const defaultMaxRetries = 2;
   let numberOfTimesTried: number;

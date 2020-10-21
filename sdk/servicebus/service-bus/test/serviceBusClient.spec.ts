@@ -359,7 +359,7 @@ describe("Test ServiceBusClient with TokenCredentials", function(): void {
 describe("Errors after close()", function(): void {
   let sbClient: ServiceBusClientForTests;
   let sender: ServiceBusSender;
-  let receiver: ServiceBusReceiver;
+  let receiver: ServiceBusReceiver | ServiceBusSessionReceiver;
   let receivedMessage: ServiceBusReceivedMessage;
   let entityName: EntityName;
 
