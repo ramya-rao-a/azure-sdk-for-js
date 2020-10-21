@@ -6,12 +6,12 @@ const should = chai.should();
 
 import { createServiceBusClientForTests } from "./utils/testutils2";
 import { TestClientType, TestMessage } from "./utils/testUtils";
-import { ServiceBusReceivedMessage, ServiceBusReceiver } from "../src";
+import { ServiceBusReceivedMessage, ServiceBusReceiver, LockMethods } from "../src";
 
 describe("dead lettering", () => {
   let serviceBusClient: ReturnType<typeof createServiceBusClientForTests>;
   let deadLetterReceiver: ServiceBusReceiver;
-  let receiver: ServiceBusReceiver;
+  let receiver: ServiceBusReceiver & LockMethods;
   let receivedMessage: ServiceBusReceivedMessage;
 
   before(() => {
@@ -166,7 +166,7 @@ describe("dead lettering", () => {
 
 describe("abandoning", () => {
   let serviceBusClient: ReturnType<typeof createServiceBusClientForTests>;
-  let receiver: ServiceBusReceiver;
+  let receiver: ServiceBusReceiver & LockMethods;
   let receivedMessage: ServiceBusReceivedMessage;
 
   before(() => {
@@ -289,7 +289,7 @@ describe("abandoning", () => {
 
 describe("deferring", () => {
   let serviceBusClient: ReturnType<typeof createServiceBusClientForTests>;
-  let receiver: ServiceBusReceiver;
+  let receiver: ServiceBusReceiver & LockMethods;
   let receivedMessage: ServiceBusReceivedMessage;
 
   before(() => {

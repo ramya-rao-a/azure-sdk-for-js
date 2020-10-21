@@ -9,7 +9,7 @@ import {
   getRandomTestClientTypeWithSessions
 } from "./utils/testutils2";
 import { ServiceBusSender } from "../src/sender";
-import { ServiceBusMessage, ServiceBusSessionReceiver } from "../src";
+import { LockMethods, ServiceBusMessage, ServiceBusSessionReceiver } from "../src";
 import { TestMessage } from "./utils/testUtils";
 const should = chai.should();
 
@@ -22,7 +22,7 @@ const should = chai.should();
 describe("sessions tests -  requires completely clean entity for each test", () => {
   let serviceBusClient: ServiceBusClientForTests;
   let sender: ServiceBusSender;
-  let receiver: ServiceBusSessionReceiver;
+  let receiver: ServiceBusSessionReceiver & LockMethods;
 
   const testClientType = getRandomTestClientTypeWithSessions();
 

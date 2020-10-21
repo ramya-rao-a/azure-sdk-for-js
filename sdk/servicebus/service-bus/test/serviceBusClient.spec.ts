@@ -6,7 +6,7 @@ import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import * as dotenv from "dotenv";
 import Long from "long";
-import { MessagingError, ServiceBusClient, ServiceBusSessionReceiver } from "../src";
+import { LockMethods, MessagingError, ServiceBusClient, ServiceBusSessionReceiver } from "../src";
 import { ServiceBusSender } from "../src/sender";
 import { DispositionType, ServiceBusReceivedMessage } from "../src/serviceBusMessage";
 import { getReceiverClosedErrorMsg, getSenderClosedErrorMsg } from "../src/util/errors";
@@ -359,7 +359,7 @@ describe("Test ServiceBusClient with TokenCredentials", function(): void {
 describe("Errors after close()", function(): void {
   let sbClient: ServiceBusClientForTests;
   let sender: ServiceBusSender;
-  let receiver: ServiceBusReceiver;
+  let receiver: ServiceBusReceiver & LockMethods;
   let receivedMessage: ServiceBusReceivedMessage;
   let entityName: EntityName;
 
@@ -579,7 +579,7 @@ describe("Errors after close()", function(): void {
    */
   async function testSessionReceiver(expectedErrorMsg: string): Promise<void> {
     await testReceiver(expectedErrorMsg);
-    const sessionReceiver = receiver as ServiceBusSessionReceiver;
+    const sessionReceiver = receiver as ServiceBusSessionReceiver & LockMethods;
 
     let errorPeek: string = "";
     await sessionReceiver.peekMessages(1).catch((err) => {

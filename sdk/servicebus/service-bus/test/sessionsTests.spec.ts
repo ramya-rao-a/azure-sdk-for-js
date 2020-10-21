@@ -6,7 +6,7 @@ import Long from "long";
 const should = chai.should();
 import chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
-import { ServiceBusReceivedMessage, delay } from "../src";
+import { ServiceBusReceivedMessage, delay, LockMethods } from "../src";
 
 import { TestClientType, TestMessage, checkWithTimeout, isMessagingError } from "./utils/testUtils";
 import { ServiceBusSender } from "../src/sender";
@@ -31,7 +31,7 @@ async function processError(err: Error): Promise<void> {
 describe("session tests", () => {
   let serviceBusClient: ServiceBusClientForTests;
   let sender: ServiceBusSender;
-  let receiver: ServiceBusSessionReceiver;
+  let receiver: ServiceBusSessionReceiver & LockMethods;
   const testClientType = getRandomTestClientTypeWithSessions();
 
   async function beforeEachTest(sessionId?: string): Promise<void> {

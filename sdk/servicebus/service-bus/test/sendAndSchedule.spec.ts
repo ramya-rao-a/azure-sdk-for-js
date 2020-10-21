@@ -6,7 +6,7 @@ import Long from "long";
 const should = chai.should();
 import chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
-import { ServiceBusMessage, delay } from "../src";
+import { ServiceBusMessage, delay, LockMethods } from "../src";
 import { TestClientType, TestMessage } from "./utils/testUtils";
 import { ServiceBusReceiver } from "../src/receivers/receiver";
 import {
@@ -30,7 +30,7 @@ const anyRandomTestClientType = getRandomTestClientType();
 
 describe("Sender Tests", () => {
   let sender: ServiceBusSender;
-  let receiver: ServiceBusReceiver;
+  let receiver: ServiceBusReceiver & LockMethods;
   let serviceBusClient: ServiceBusClientForTests;
   let entityName: EntityName;
 

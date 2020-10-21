@@ -14,7 +14,11 @@ import {
 } from "../util/errors";
 import { OnError, OnMessage } from "../core/messageReceiver";
 import { assertValidMessageHandlers, getMessageIterator, wrapProcessErrorHandler } from "./shared";
-import { defaultMaxTimeAfterFirstMessageForBatchingMs, ServiceBusReceiver } from "./receiver";
+import {
+  defaultMaxTimeAfterFirstMessageForBatchingMs,
+  LockMethods,
+  ServiceBusReceiver
+} from "./receiver";
 import Long from "long";
 import { ServiceBusMessageImpl, DeadLetterOptions } from "../serviceBusMessage";
 import {
@@ -102,7 +106,7 @@ export interface ServiceBusSessionReceiver extends ServiceBusReceiver {
  * @internal
  * @ignore
  */
-export class ServiceBusSessionReceiverImpl implements ServiceBusSessionReceiver {
+export class ServiceBusSessionReceiverImpl implements ServiceBusSessionReceiver, LockMethods {
   public sessionId: string;
 
   /**

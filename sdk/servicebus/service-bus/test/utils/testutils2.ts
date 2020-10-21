@@ -9,7 +9,8 @@ import {
   ServiceBusSessionReceiver,
   ServiceBusClientOptions,
   AcceptSessionOptions,
-  CreateReceiverOptions
+  CreateReceiverOptions,
+  LockMethods
 } from "../../src";
 
 import { TestClientType, TestMessage } from "./testUtils";
@@ -326,7 +327,7 @@ export class ServiceBusTestHelpers {
   async createPeekLockReceiver(
     entityNames: Omit<ReturnType<typeof getEntityNames>, "isPartitioned">,
     options?: CreateReceiverOptions<"peekLock">
-  ): Promise<ServiceBusReceiver> {
+  ): Promise<ServiceBusReceiver & LockMethods> {
     if (entityNames.usesSessions) {
       // if you're creating a receiver this way then you'll just use the default
       // session ID for your receiver.
@@ -371,7 +372,7 @@ export class ServiceBusTestHelpers {
     entityNames: Omit<ReturnType<typeof getEntityNames>, "isPartitioned">,
     sessionId: string,
     options?: AcceptSessionOptions<"peekLock">
-  ): Promise<ServiceBusSessionReceiver> {
+  ): Promise<ServiceBusSessionReceiver & LockMethods> {
     if (!entityNames.usesSessions) {
       throw new TypeError(
         "Not a session-full entity - can't create a session receiver type for it"
@@ -434,7 +435,9 @@ export class ServiceBusTestHelpers {
     }
   }
 
-  createDeadLetterReceiver(entityNames: ReturnType<typeof getEntityNames>): ServiceBusReceiver {
+  createDeadLetterReceiver(
+    entityNames: ReturnType<typeof getEntityNames>
+  ): ServiceBusReceiver & LockMethods {
     return this.addToCleanup(
       entityNames.queue
         ? this._serviceBusClient.createReceiver(entityNames.queue, {

@@ -247,13 +247,13 @@ describe("receive and delete", () => {
 
       try {
         if (operation === DispositionType.complete) {
-          await receiver.completeMessage(msg);
+          await (receiver as any).completeMessage(msg);
         } else if (operation === DispositionType.abandon) {
-          await receiver.abandonMessage(msg);
+          await (receiver as any).abandonMessage(msg);
         } else if (operation === DispositionType.deadletter) {
-          await receiver.deadLetterMessage(msg);
+          await (receiver as any).deadLetterMessage(msg);
         } else if (operation === DispositionType.defer) {
-          await receiver.deferMessage(msg);
+          await (receiver as any).deferMessage(msg);
         }
       } catch (err) {
         errorWasThrown = true;
@@ -309,7 +309,7 @@ describe("receive and delete", () => {
       const msg = await sendReceiveMsg(TestMessage.getSample());
 
       // have to cast it - the type system doesn't allow us to call into this method otherwise.
-      await receiver.renewMessageLock(msg).catch((err) => {
+      await (receiver as any).renewMessageLock(msg).catch((err: Error) => {
         should.equal(
           err.message,
           getErrorMessageNotSupportedInReceiveAndDeleteMode("renew the lock on the message"),
@@ -354,7 +354,7 @@ describe("receive and delete", () => {
       );
       should.equal(msgs[0].deliveryCount, 0, "DeliveryCount is different than expected");
 
-      await receiver.deferMessage(msgs[0]);
+      await (receiver as any).deferMessage(msgs[0]);
       return msgs[0].sequenceNumber!;
     }
 
@@ -431,7 +431,7 @@ describe("receive and delete", () => {
 
       // receive and defer the message
       const [msg] = await receiver.receiveMessages(1);
-      await receiver.deferMessage(msg);
+      await (receiver as any).deferMessage(msg);
       const sequenceNumber = msg.sequenceNumber!;
       await receiver.close();
 
@@ -462,13 +462,13 @@ describe("receive and delete", () => {
 
       try {
         if (operation === DispositionType.complete) {
-          await receiver.completeMessage(msg);
+          await (receiver as any).completeMessage(msg);
         } else if (operation === DispositionType.abandon) {
-          await receiver.abandonMessage(msg);
+          await (receiver as any).abandonMessage(msg);
         } else if (operation === DispositionType.deadletter) {
-          await receiver.deadLetterMessage(msg);
+          await (receiver as any).deadLetterMessage(msg);
         } else if (operation === DispositionType.defer) {
-          await receiver.deferMessage(msg);
+          await (receiver as any).deferMessage(msg);
         }
       } catch (err) {
         errorWasThrown = true;
@@ -516,7 +516,7 @@ describe("receive and delete", () => {
       // as your lock mode.
 
       // have to cast it - the type system doesn't allow us to call into this method otherwise.
-      await receiver.renewMessageLock(deferredMsg).catch((err) => {
+      await (receiver as any).renewMessageLock(deferredMsg).catch((err: Error) => {
         should.equal(
           err.message,
           getErrorMessageNotSupportedInReceiveAndDeleteMode("renew the lock on the message"),

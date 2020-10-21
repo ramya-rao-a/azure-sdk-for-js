@@ -3,7 +3,7 @@
 
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
-import { ServiceBusReceivedMessage, delay } from "../src";
+import { ServiceBusReceivedMessage, delay, LockMethods } from "../src";
 import { getAlreadyReceivingErrorMsg } from "../src/util/errors";
 import { TestMessage, checkWithTimeout, TestClientType } from "./utils/testUtils";
 import { StreamingReceiver } from "../src/core/streamingReceiver";
@@ -40,7 +40,7 @@ async function processError(err: Error): Promise<void> {
 describe("Streaming Receiver Tests", () => {
   let serviceBusClient: ServiceBusClientForTests;
   let sender: ServiceBusSender;
-  let receiver: ServiceBusReceiver;
+  let receiver: ServiceBusReceiver & LockMethods;
   let deadLetterReceiver: ServiceBusReceiver;
   let entityNames: EntityName;
 
@@ -52,14 +52,10 @@ describe("Streaming Receiver Tests", () => {
     await serviceBusClient.test.after();
   });
 
-  async function beforeEachTest(receiveMode?: "peekLock" | "receiveAndDelete"): Promise<void> {
+  async function beforeEachTest(): Promise<void> {
     entityNames = await serviceBusClient.test.createTestEntities(testClientType);
 
-    if (receiveMode === "receiveAndDelete") {
-      receiver = await serviceBusClient.test.createReceiveAndDeleteReceiver(entityNames);
-    } else {
-      receiver = await serviceBusClient.test.createPeekLockReceiver(entityNames);
-    }
+    receiver = await serviceBusClient.test.createPeekLockReceiver(entityNames);
     sender = serviceBusClient.test.addToCleanup(
       serviceBusClient.createSender(entityNames.queue ?? entityNames.topic!)
     );
@@ -810,7 +806,7 @@ describe("Streaming Receiver Tests", () => {
   });
 
   describe("Streaming - Not receive messages after receiver is closed", function(): void {
-    async function testReceiveMessages(): Promise<void> {
+    async function testReceiveMessages(testReceiver: ServiceBusReceiver): Promise<void> {
       const totalNumOfMessages = 5;
       let num = 1;
       const messages = [];
@@ -830,11 +826,10 @@ describe("Streaming Receiver Tests", () => {
 
       const receivedMsgs: ServiceBusReceivedMessage[] = [];
 
-      receiver.subscribe(
+      testReceiver.subscribe(
         {
           async processMessage(brokeredMessage: ServiceBusReceivedMessage) {
             receivedMsgs.push(brokeredMessage);
-            await receiver.completeMessage(brokeredMessage);
           },
           processError
         },
@@ -842,7 +837,7 @@ describe("Streaming Receiver Tests", () => {
           autoComplete: false
         }
       );
-      await receiver.close();
+      await testReceiver.close();
 
       await delay(5000);
       should.equal(
@@ -850,14 +845,16 @@ describe("Streaming Receiver Tests", () => {
         0,
         `Expected 0 messages, but received ${receivedMsgs.length}`
       );
-      receiver = await serviceBusClient.test.createReceiveAndDeleteReceiver(entityNames);
+      const receiveAndDeleteReceiver = await serviceBusClient.test.createReceiveAndDeleteReceiver(
+        entityNames
+      );
       await verifyMessageCount(
         totalNumOfMessages,
         entityNames.queue,
         entityNames.topic,
         entityNames.subscription
       );
-      await drainReceiveAndDeleteReceiver(receiver);
+      await drainReceiveAndDeleteReceiver(receiveAndDeleteReceiver);
       await verifyMessageCount(0, entityNames.queue, entityNames.topic, entityNames.subscription);
     }
 
@@ -865,15 +862,19 @@ describe("Streaming Receiver Tests", () => {
       testClientType + ": Not receive messages after receiver is closed",
       async function(): Promise<void> {
         await beforeEachTest();
-        await testReceiveMessages();
+        await testReceiveMessages(receiver);
       }
     );
 
     it(
       testClientType + ": (Receive And Delete mode) Not receive messages after receiver is closed",
       async function(): Promise<void> {
-        await beforeEachTest("receiveAndDelete");
-        await testReceiveMessages();
+        await beforeEachTest();
+        await receiver.close();
+        const receiveAndDeleteReceiver = await serviceBusClient.test.createReceiveAndDeleteReceiver(
+          entityNames
+        );
+        await testReceiveMessages(receiveAndDeleteReceiver);
       }
     );
   });
@@ -1107,7 +1108,7 @@ describe(testClientType + ": Streaming - onDetached", function(): void {
 describe(testClientType + ": Streaming - disconnects", function(): void {
   let serviceBusClient: ServiceBusClientForTests;
   let sender: ServiceBusSender;
-  let receiver: ServiceBusReceiver;
+  let receiver: ServiceBusReceiver & LockMethods;
 
   before(() => {
     serviceBusClient = createServiceBusClientForTests();

@@ -31,109 +31,7 @@ import { LockRenewer } from "../core/autoLockRenewer";
 import { createProcessingSpan } from "../diagnostics/instrumentServiceBusMessage";
 import { receiverLogger as logger } from "../log";
 
-/**
- * A receiver that does not handle sessions.
- */
-export interface ServiceBusReceiver {
-  /**
-   * Streams messages to message handlers.
-   * @param handlers A handler that gets called for messages and errors.
-   * @param options Options for subscribe.
-   * @returns An object that can be closed, sending any remaining messages to `handlers` and
-   * stopping new messages from arriving.
-   */
-  subscribe(
-    handlers: MessageHandlers,
-    options?: SubscribeOptions
-  ): {
-    /**
-     * Causes the subscriber to stop receiving new messages.
-     */
-    close(): Promise<void>;
-  };
-
-  /**
-   * Returns an iterator that can be used to receive messages from Service Bus.
-   * If the iterator is not able to fetch a new message in over a minute, `undefined` will be returned.
-   *
-   * @param options A set of options to control the receive operation.
-   * - `maxWaitTimeInMs`: The time to wait to receive the message in each iteration.
-   * - `abortSignal`: The signal to use to abort the ongoing operation.
-   *
-   * @throws Error if the underlying connection, client or receiver is closed.
-   * @throws Error if current receiver is already in state of receiving messages.
-   * @throws MessagingError if the service returns an error while receiving messages.
-   */
-  getMessageIterator(
-    options?: GetMessageIteratorOptions
-  ): AsyncIterableIterator<ServiceBusReceivedMessage>;
-
-  /**
-   * Returns a promise that resolves to an array of messages received from Service Bus.
-   *
-   * @param maxMessageCount The maximum number of messages to receive.
-   * @param options A set of options to control the receive operation.
-   * - `maxWaitTimeInMs`: The maximum time to wait for the first message before returning an empty array if no messages are available.
-   * - `abortSignal`: The signal to use to abort the ongoing operation.
-   * @returns Promise<ReceivedMessageT[]> A promise that resolves with an array of messages.
-   * @throws Error if the underlying connection, client or receiver is closed.
-   * @throws Error if current receiver is already in state of receiving messages.
-   * @throws MessagingError if the service returns an error while receiving messages.
-   */
-  receiveMessages(
-    maxMessageCount: number,
-    options?: ReceiveMessagesOptions
-  ): Promise<ServiceBusReceivedMessage[]>;
-
-  /**
-   * Returns a promise that resolves to an array of deferred messages identified by given `sequenceNumbers`.
-   * @param sequenceNumbers The sequence number or an array of sequence numbers for the messages that need to be received.
-   * @param options - Options bag to pass an abort signal or tracing options.
-   * @returns {Promise<ServiceBusMessage[]>}
-   * - Returns a list of messages identified by the given sequenceNumbers.
-   * - Returns an empty list if no messages are found.
-   * @throws Error if the underlying connection or receiver is closed.
-   * @throws MessagingError if the service returns an error while receiving deferred messages.
-   */
-  receiveDeferredMessages(
-    sequenceNumbers: Long | Long[],
-    options?: OperationOptionsBase
-  ): Promise<ServiceBusReceivedMessage[]>;
-
-  /**
-   * Peek the next batch of active messages (including deferred but not deadlettered messages) on the
-   * queue or subscription without modifying them.
-   * - The first call to `peekMessages()` fetches the first active message. Each subsequent call fetches the
-   * subsequent message.
-   * - Unlike a "received" message, "peeked" message is a read-only version of the message.
-   * It cannot be `Completed/Abandoned/Deferred/Deadlettered`.
-   * @param maxMessageCount The maximum number of messages to peek.
-   * @param options Options that allow to specify the maximum number of messages to peek,
-   * the sequenceNumber to start peeking from or an abortSignal to abort the operation.
-   */
-  peekMessages(
-    maxMessageCount: number,
-    options?: PeekMessagesOptions
-  ): Promise<ServiceBusReceivedMessage[]>;
-  /**
-   * Path of the entity for which the receiver has been created.
-   */
-  entityPath: string;
-  /**
-   * ReceiveMode provided to the client.
-   */
-  receiveMode: "peekLock" | "receiveAndDelete";
-  /**
-   * @property Returns `true` if either the receiver or the client that created it has been closed
-   * @readonly
-   */
-  isClosed: boolean;
-  /**
-   * Closes the receiver.
-   * Once closed, the receiver cannot be used for any further operations.
-   * Use the `createReceiver()` method on the ServiceBusClient to create a new Receiver.
-   */
-  close(): Promise<void>;
+export interface LockMethods {
   /**
    * Removes the message from Service Bus.
    *
@@ -257,10 +155,115 @@ export interface ServiceBusReceiver {
 }
 
 /**
+ * A receiver that does not handle sessions.
+ */
+export interface ServiceBusReceiver {
+  /**
+   * Streams messages to message handlers.
+   * @param handlers A handler that gets called for messages and errors.
+   * @param options Options for subscribe.
+   * @returns An object that can be closed, sending any remaining messages to `handlers` and
+   * stopping new messages from arriving.
+   */
+  subscribe(
+    handlers: MessageHandlers,
+    options?: SubscribeOptions
+  ): {
+    /**
+     * Causes the subscriber to stop receiving new messages.
+     */
+    close(): Promise<void>;
+  };
+
+  /**
+   * Returns an iterator that can be used to receive messages from Service Bus.
+   * If the iterator is not able to fetch a new message in over a minute, `undefined` will be returned.
+   *
+   * @param options A set of options to control the receive operation.
+   * - `maxWaitTimeInMs`: The time to wait to receive the message in each iteration.
+   * - `abortSignal`: The signal to use to abort the ongoing operation.
+   *
+   * @throws Error if the underlying connection, client or receiver is closed.
+   * @throws Error if current receiver is already in state of receiving messages.
+   * @throws MessagingError if the service returns an error while receiving messages.
+   */
+  getMessageIterator(
+    options?: GetMessageIteratorOptions
+  ): AsyncIterableIterator<ServiceBusReceivedMessage>;
+
+  /**
+   * Returns a promise that resolves to an array of messages received from Service Bus.
+   *
+   * @param maxMessageCount The maximum number of messages to receive.
+   * @param options A set of options to control the receive operation.
+   * - `maxWaitTimeInMs`: The maximum time to wait for the first message before returning an empty array if no messages are available.
+   * - `abortSignal`: The signal to use to abort the ongoing operation.
+   * @returns Promise<ReceivedMessageT[]> A promise that resolves with an array of messages.
+   * @throws Error if the underlying connection, client or receiver is closed.
+   * @throws Error if current receiver is already in state of receiving messages.
+   * @throws MessagingError if the service returns an error while receiving messages.
+   */
+  receiveMessages(
+    maxMessageCount: number,
+    options?: ReceiveMessagesOptions
+  ): Promise<ServiceBusReceivedMessage[]>;
+
+  /**
+   * Returns a promise that resolves to an array of deferred messages identified by given `sequenceNumbers`.
+   * @param sequenceNumbers The sequence number or an array of sequence numbers for the messages that need to be received.
+   * @param options - Options bag to pass an abort signal or tracing options.
+   * @returns {Promise<ServiceBusMessage[]>}
+   * - Returns a list of messages identified by the given sequenceNumbers.
+   * - Returns an empty list if no messages are found.
+   * @throws Error if the underlying connection or receiver is closed.
+   * @throws MessagingError if the service returns an error while receiving deferred messages.
+   */
+  receiveDeferredMessages(
+    sequenceNumbers: Long | Long[],
+    options?: OperationOptionsBase
+  ): Promise<ServiceBusReceivedMessage[]>;
+
+  /**
+   * Peek the next batch of active messages (including deferred but not deadlettered messages) on the
+   * queue or subscription without modifying them.
+   * - The first call to `peekMessages()` fetches the first active message. Each subsequent call fetches the
+   * subsequent message.
+   * - Unlike a "received" message, "peeked" message is a read-only version of the message.
+   * It cannot be `Completed/Abandoned/Deferred/Deadlettered`.
+   * @param maxMessageCount The maximum number of messages to peek.
+   * @param options Options that allow to specify the maximum number of messages to peek,
+   * the sequenceNumber to start peeking from or an abortSignal to abort the operation.
+   */
+  peekMessages(
+    maxMessageCount: number,
+    options?: PeekMessagesOptions
+  ): Promise<ServiceBusReceivedMessage[]>;
+  /**
+   * Path of the entity for which the receiver has been created.
+   */
+  entityPath: string;
+  /**
+   * ReceiveMode provided to the client.
+   */
+  receiveMode: "peekLock" | "receiveAndDelete";
+  /**
+   * @property Returns `true` if either the receiver or the client that created it has been closed
+   * @readonly
+   */
+  isClosed: boolean;
+  /**
+   * Closes the receiver.
+   * Once closed, the receiver cannot be used for any further operations.
+   * Use the `createReceiver()` method on the ServiceBusClient to create a new Receiver.
+   */
+  close(): Promise<void>;
+}
+
+/**
  * @internal
  * @ignore
  */
-export class ServiceBusReceiverImpl implements ServiceBusReceiver {
+export class ServiceBusReceiverImpl implements ServiceBusReceiver, LockMethods {
   private _retryOptions: RetryOptions;
   /**
    * @property {boolean} [_isClosed] Denotes if close() was called on this receiver

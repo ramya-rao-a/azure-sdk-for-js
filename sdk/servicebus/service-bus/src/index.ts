@@ -29,7 +29,7 @@ export {
   SubscribeOptions
 } from "./models";
 export { OperationOptionsBase, TryAddOptions } from "./modelsToBeSharedWithEventHubs";
-export { ServiceBusReceiver } from "./receivers/receiver";
+export { ServiceBusReceiver, LockMethods } from "./receivers/receiver";
 export { ServiceBusSessionReceiver } from "./receivers/sessionReceiver";
 export { ServiceBusSender } from "./sender";
 export { NamespaceProperties } from "./serializers/namespaceResourceSerializer";

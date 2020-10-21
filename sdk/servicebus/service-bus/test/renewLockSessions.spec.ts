@@ -5,7 +5,7 @@ import chai from "chai";
 const should = chai.should();
 import chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
-import { MessagingError, ServiceBusMessage, delay } from "../src";
+import { MessagingError, ServiceBusMessage, delay, LockMethods } from "../src";
 import { TestClientType, TestMessage, isMessagingError } from "./utils/testUtils";
 import {
   ServiceBusClientForTests,
@@ -18,7 +18,7 @@ import { ServiceBusReceivedMessage } from "../src/serviceBusMessage";
 
 describe("Session Lock Renewal", () => {
   let sender: ServiceBusSender;
-  let receiver: ServiceBusSessionReceiver;
+  let receiver: ServiceBusSessionReceiver & LockMethods;
   let sessionId: string;
 
   let serviceBusClient: ServiceBusClientForTests;
@@ -133,7 +133,7 @@ describe("Session Lock Renewal", () => {
    */
   async function testBatchReceiverManualLockRenewalHappyCase(
     sender: ServiceBusSender,
-    receiver: ServiceBusSessionReceiver
+    receiver: ServiceBusSessionReceiver & LockMethods
   ): Promise<void> {
     const testMessage = getTestMessage();
     testMessage.body = `testBatchReceiverManualLockRenewalHappyCase-${Date.now().toString()}`;
@@ -181,7 +181,7 @@ describe("Session Lock Renewal", () => {
   async function testBatchReceiverManualLockRenewalErrorOnLockExpiry(
     entityType: TestClientType,
     sender: ServiceBusSender,
-    receiver: ServiceBusSessionReceiver
+    receiver: ServiceBusSessionReceiver & LockMethods
   ): Promise<void> {
     const testMessage = getTestMessage();
     testMessage.body = `testBatchReceiverManualLockRenewalErrorOnLockExpiry-${Date.now().toString()}`;
@@ -220,7 +220,7 @@ describe("Session Lock Renewal", () => {
    */
   async function testStreamingReceiverManualLockRenewalHappyCase(
     sender: ServiceBusSender,
-    receiver: ServiceBusSessionReceiver
+    receiver: ServiceBusSessionReceiver & LockMethods
   ): Promise<void> {
     let numOfMessagesReceived = 0;
     const testMessage = getTestMessage();
@@ -296,7 +296,7 @@ describe("Session Lock Renewal", () => {
 
   async function testAutoLockRenewalConfigBehavior(
     sender: ServiceBusSender,
-    receiver: ServiceBusSessionReceiver,
+    receiver: ServiceBusSessionReceiver & LockMethods,
     options: AutoLockRenewalTestOptions
   ): Promise<void> {
     let numOfMessagesReceived = 0;
