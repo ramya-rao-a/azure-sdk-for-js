@@ -5,7 +5,7 @@ import chai from "chai";
 const should = chai.should();
 import chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
-import { ServiceBusMessage, delay, ProcessErrorArgs } from "../src";
+import { ServiceBusMessage, delay, ProcessErrorArgs, LockMethods } from "../src";
 import { TestClientType, TestMessage, isMessagingError } from "./utils/testUtils";
 import {
   ServiceBusClientForTests,
