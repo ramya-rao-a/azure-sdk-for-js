@@ -22,6 +22,7 @@ export {
   AcceptSessionOptions,
   GetMessageIteratorOptions,
   MessageHandlers,
+  ProcessErrorArgs,
   PeekMessagesOptions,
   ReceiveMessagesOptions,
   ReceiveMode,
@@ -80,3 +81,7 @@ export {
 } from "./serviceBusMessage";
 export { ServiceBusMessageBatch } from "./serviceBusMessageBatch";
 export { AuthorizationRule, EntityStatus, EntityAvailabilityStatus } from "./util/utils";
+export {
+  parseServiceBusConnectionString,
+  ServiceBusConnectionStringProperties
+} from "./util/connectionStringUtils";

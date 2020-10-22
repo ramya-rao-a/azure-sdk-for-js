@@ -10,7 +10,8 @@ import {
   ServiceBusReceivedMessage,
   ServiceBusMessage,
   ServiceBusReceiver,
-  ServiceBusReceiverWithNoSettlementMethods
+  ServiceBusReceiverWithNoSettlementMethods,
+  ProcessErrorArgs
 } from "../src";
 
 import { TestClientType, TestMessage, checkWithTimeout } from "./utils/testUtils";
@@ -135,8 +136,8 @@ describe("receive and delete", () => {
           async processMessage(message: ServiceBusReceivedMessage): Promise<void> {
             receivedMsgs.push(message);
           },
-          async processError(err: Error): Promise<void> {
-            errors.push(err.message);
+          async processError(args: ProcessErrorArgs): Promise<void> {
+            errors.push(args.error.message);
           }
         },
         { autoComplete: autoCompleteFlag }
@@ -246,8 +247,6 @@ describe("receive and delete", () => {
       const testMessages = entityName.usesSessions
         ? TestMessage.getSessionSample()
         : TestMessage.getSample();
-      // we have to force this cast - the type system doesn't allow this if you've chosen receiveAndDelete
-      // as your lock mode.
       const msg = await sendReceiveMsg(testMessages);
 
       try {
@@ -511,8 +510,6 @@ describe("receive and delete", () => {
 
     async function testRenewLock(testClienttype: TestClientType): Promise<void> {
       const deferredMsg = await testDeferredMessage(testClienttype);
-      // we have to force this cast - the type system doesn't allow this if you've chosen receiveAndDelete
-      // as your lock mode.
 
       // have to cast it - the type system doesn't allow us to call into this method otherwise.
       await (receiveAndDeleteReceiver as any).renewMessageLock(deferredMsg).catch((err: Error) => {
