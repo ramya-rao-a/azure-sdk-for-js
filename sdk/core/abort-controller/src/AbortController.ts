@@ -102,7 +102,7 @@ export class AbortController {
    *
    * @readonly
    * @type {AbortSignal}
-   * @memberof AbortController
+   *
    */
   public get signal() {
     return this._signal;
@@ -112,7 +112,7 @@ export class AbortController {
    * Signal that any operations passed this controller's associated abort signal
    * to cancel any remaining work and throw an `AbortError`.
    *
-   * @memberof AbortController
+   *
    */
   abort() {
     abortSignal(this._signal);

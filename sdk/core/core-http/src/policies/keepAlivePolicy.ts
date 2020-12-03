@@ -58,7 +58,7 @@ export class KeepAlivePolicy extends BaseRequestPolicy {
    *
    * @param {WebResourceLike} request
    * @returns {Promise<HttpOperationResponse>}
-   * @memberof KeepAlivePolicy
+   *
    */
   public async sendRequest(request: WebResourceLike): Promise<HttpOperationResponse> {
     request.keepAlive = this.keepAliveOptions.enable;

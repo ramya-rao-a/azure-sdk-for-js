@@ -61,7 +61,7 @@ export class AbortSignal implements AbortSignalLike {
    *
    * @readonly
    * @type {boolean}
-   * @memberof AbortSignal
+   *
    */
   public get aborted(): boolean {
     if (!abortedMap.has(this)) {
@@ -77,7 +77,7 @@ export class AbortSignal implements AbortSignalLike {
    * @readonly
    * @static
    * @type {AbortSignal}
-   * @memberof AbortSignal
+   *
    */
   public static get none(): AbortSignal {
     return new AbortSignal();
@@ -86,7 +86,7 @@ export class AbortSignal implements AbortSignalLike {
   /**
    * onabort event listener.
    *
-   * @memberof AbortSignal
+   *
    */
   public onabort: ((ev?: Event) => any) | null = null;
 
@@ -95,7 +95,7 @@ export class AbortSignal implements AbortSignalLike {
    *
    * @param {"abort"} _type Only support "abort" event
    * @param {(this: AbortSignalLike, ev: any) => any} listener
-   * @memberof AbortSignal
+   *
    */
   public addEventListener(
     // tslint:disable-next-line:variable-name
@@ -115,7 +115,7 @@ export class AbortSignal implements AbortSignalLike {
    *
    * @param {"abort"} _type Only support "abort" event
    * @param {(this: AbortSignalLike, ev: any) => any} listener
-   * @memberof AbortSignal
+   *
    */
   public removeEventListener(
     // tslint:disable-next-line:variable-name
