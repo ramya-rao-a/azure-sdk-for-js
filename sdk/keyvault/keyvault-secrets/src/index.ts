@@ -127,7 +127,7 @@ export class SecretClient {
    * @param {TokenCredential} credential An object that implements the `TokenCredential` interface used to authenticate requests to the service. Use the @azure/identity package to create a credential that suits your needs.
    * @param {PipelineOptions} [pipelineOptions] Optional. Pipeline options used to configure Key Vault API requests.
    *                                                         Omit this parameter to use the default pipeline configuration.
-   * @memberof SecretClient
+   *
    */
   constructor(
     vaultUrl: string,

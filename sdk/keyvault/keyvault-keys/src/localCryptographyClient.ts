@@ -118,7 +118,7 @@ export class LocalCryptographyClient {
    * const client = new LocalCryptographyClient(jsonWebKey);
    * ```
    * @param key The JsonWebKey to use during cryptography operations.
-   * @memberof CryptographyClient
+   *
    */
   constructor(key: JsonWebKey) {
     this.key = key;
