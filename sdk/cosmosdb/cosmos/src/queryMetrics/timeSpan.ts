@@ -92,7 +92,7 @@ export class TimeSpan {
   /**
    * Returns a new TimeSpan object whose value is the sum of the specified TimeSpan object and this instance.
    * @param {TimeSpan} ts              - The time interval to add.
-   * @memberof TimeSpan
+   *
    * @instance
    */
   public add(ts: TimeSpan) {
@@ -107,7 +107,7 @@ export class TimeSpan {
   /**
    * Returns a new TimeSpan object whose value is the difference of the specified TimeSpan object and this instance.
    * @param {TimeSpan} ts              - The time interval to subtract.
-   * @memberof TimeSpan
+   *
    * @instance
    */
   public subtract(ts: TimeSpan) {
@@ -123,7 +123,7 @@ export class TimeSpan {
    * Compares this instance to a specified object and returns an integer that indicates whether this
    * instance is shorter than, equal to, or longer than the specified object.
    * @param {TimeSpan} value              - The time interval to add.
-   * @memberof TimeSpan
+   *
    * @instance
    */
   public compareTo(value: TimeSpan) {
@@ -140,7 +140,7 @@ export class TimeSpan {
 
   /**
    * Returns a new TimeSpan object whose value is the absolute value of the current TimeSpan object.
-   * @memberof TimeSpan
+   *
    * @instance
    */
   public duration() {
@@ -149,7 +149,7 @@ export class TimeSpan {
 
   /**
    * Returns a value indicating whether this instance is equal to a specified object.
-   * @memberof TimeSpan
+   *
    * @param {TimeSpan} value              - The time interval to check for equality.
    * @instance
    */
@@ -163,7 +163,7 @@ export class TimeSpan {
 
   /**
    * Returns a new TimeSpan object whose value is the negated value of this instance.
-   * @memberof TimeSpan
+   *
    * @param {TimeSpan} value              - The time interval to check for equality.
    * @instance
    */

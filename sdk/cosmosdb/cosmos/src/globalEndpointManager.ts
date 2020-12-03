@@ -183,7 +183,7 @@ export class GlobalEndpointManager {
    * Gets the database account first by using the default endpoint, and if that doesn't returns
    * use the endpoints for the preferred locations in the order they are specified to get
    * the database account.
-   * @memberof GlobalEndpointManager
+   *
    * @instance
    * @param {function} callback        - The callback function which takes databaseAccount(object) as an argument.
    */
@@ -223,7 +223,7 @@ export class GlobalEndpointManager {
 
   /**
    * Gets the locational endpoint using the location name passed to it using the default endpoint.
-   * @memberof GlobalEndpointManager
+   *
    * @instance
    * @param {string} defaultEndpoint - The default endpoint to use for the endpoint.
    * @param {string} locationName    - The location name for the azure region like "East US".

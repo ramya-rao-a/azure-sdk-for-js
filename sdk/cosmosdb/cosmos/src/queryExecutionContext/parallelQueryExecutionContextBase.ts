@@ -192,7 +192,7 @@ export abstract class ParallelQueryExecutionContextBase implements ExecutionCont
 
   /**
    * Gets the replacement ranges for a partitionkeyrange that has been split
-   * @memberof ParallelQueryExecutionContextBase
+   *
    * @instance
    */
   private async _getReplacementPartitionKeyRanges(documentProducer: DocumentProducer) {
@@ -209,7 +209,7 @@ export abstract class ParallelQueryExecutionContextBase implements ExecutionCont
    * Removes the current document producer from the priqueue,
    * replaces that document producer with child document producers,
    * then reexecutes the originFunction with the corrrected executionContext
-   * @memberof ParallelQueryExecutionContextBase
+   *
    * @instance
    */
   private async _repairExecutionContext(originFunction: any) {
@@ -284,7 +284,7 @@ export abstract class ParallelQueryExecutionContextBase implements ExecutionCont
    * Checks to see if the executionContext needs to be repaired.
    * if so it repairs the execution context and executes the ifCallback,
    * else it continues with the current execution context and executes the elseCallback
-   * @memberof ParallelQueryExecutionContextBase
+   *
    * @instance
    */
   private async _repairExecutionContextIfNeeded(ifCallback: any, elseCallback: any) {
@@ -307,7 +307,7 @@ export abstract class ParallelQueryExecutionContextBase implements ExecutionCont
 
   /**
    * Execute a provided function on the next element in the ParallelQueryExecutionContextBase.
-   * @memberof ParallelQueryExecutionContextBase
+   *
    * @instance
    * @param {callback} callback - Function to execute for each element. the function takes two \
    * parameters error, element.
@@ -445,7 +445,7 @@ export abstract class ParallelQueryExecutionContextBase implements ExecutionCont
   /**
    * Determine if there are still remaining resources to processs based on the value of the continuation \
    * token or the elements remaining on the current batch in the QueryIterator.
-   * @memberof ParallelQueryExecutionContextBase
+   *
    * @instance
    * @returns {Boolean} true if there is other elements to process in the ParallelQueryExecutionContextBase.
    */

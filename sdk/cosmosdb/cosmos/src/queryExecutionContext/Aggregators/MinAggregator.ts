@@ -23,7 +23,7 @@ export class MinAggregator implements Aggregator {
   }
   /**
    * Add the provided item to aggregation result.
-   * @memberof MinAggregator
+   *
    * @instance
    * @param other
    */
@@ -42,7 +42,7 @@ export class MinAggregator implements Aggregator {
 
   /**
    * Get the aggregation result.
-   * @memberof MinAggregator
+   *
    * @instance
    */
   public getResult() {

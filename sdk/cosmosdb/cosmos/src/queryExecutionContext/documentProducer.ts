@@ -150,7 +150,7 @@ export class DocumentProducer {
 
   /**
    * Fetches and bufferes the next page of results and executes the given callback
-   * @memberof DocumentProducer
+   *
    * @instance
    */
   public async bufferMore(): Promise<Response<any>> {
@@ -213,7 +213,7 @@ export class DocumentProducer {
 
   /**
    * Execute a provided function on the next element in the DocumentProducer.
-   * @memberof DocumentProducer
+   *
    * @instance
    * @param {callback} callback - Function to execute for each element. the function \
    * takes two parameters error, element.
@@ -249,7 +249,7 @@ export class DocumentProducer {
 
   /**
    * Retrieve the current element on the DocumentProducer.
-   * @memberof DocumentProducer
+   *
    * @instance
    * @param {callback} callback - Function to execute for the current element. \
    * the function takes two parameters error, element.

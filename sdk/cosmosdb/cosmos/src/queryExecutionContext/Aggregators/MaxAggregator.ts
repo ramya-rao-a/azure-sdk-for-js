@@ -23,7 +23,7 @@ export class MaxAggregator implements Aggregator {
   }
   /**
    * Add the provided item to aggregation result.
-   * @memberof MaxAggregator
+   *
    * @instance
    * @param other
    */
@@ -39,7 +39,7 @@ export class MaxAggregator implements Aggregator {
 
   /**
    * Get the aggregation result.
-   * @memberof MaxAggregator
+   *
    * @instance
    */
   public getResult() {

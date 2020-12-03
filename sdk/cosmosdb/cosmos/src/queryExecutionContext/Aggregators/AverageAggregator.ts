@@ -14,7 +14,7 @@ export class AverageAggregator implements Aggregator {
   public count: number;
   /**
    * Add the provided item to aggregation result.
-   * @memberof AverageAggregator
+   *
    * @instance
    * @param other
    */
@@ -32,7 +32,7 @@ export class AverageAggregator implements Aggregator {
 
   /**
    * Get the aggregation result.
-   * @memberof AverageAggregator
+   *
    * @instance
    */
   public getResult() {

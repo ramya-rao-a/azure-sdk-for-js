@@ -15,7 +15,7 @@ export class CountAggregator implements Aggregator {
   }
   /**
    * Add the provided item to aggregation result.
-   * @memberof CountAggregator
+   *
    * @instance
    * @param other
    */
@@ -25,7 +25,7 @@ export class CountAggregator implements Aggregator {
 
   /**
    * Get the aggregation result.
-   * @memberof CountAggregator
+   *
    * @instance
    */
   public getResult() {

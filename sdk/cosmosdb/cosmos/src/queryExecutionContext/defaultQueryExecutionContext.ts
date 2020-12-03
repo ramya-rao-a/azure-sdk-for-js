@@ -58,7 +58,7 @@ export class DefaultQueryExecutionContext implements ExecutionContext {
 
   /**
    * Execute a provided callback on the next element in the execution context.
-   * @memberof DefaultQueryExecutionContext
+   *
    * @instance
    */
   public async nextItem(): Promise<Response<any>> {
@@ -69,7 +69,7 @@ export class DefaultQueryExecutionContext implements ExecutionContext {
 
   /**
    * Retrieve the current element on the execution context.
-   * @memberof DefaultQueryExecutionContext
+   *
    * @instance
    */
   public async current(): Promise<Response<any>> {
@@ -101,7 +101,7 @@ export class DefaultQueryExecutionContext implements ExecutionContext {
   /**
    * Determine if there are still remaining resources to processs based on
    * the value of the continuation token or the elements remaining on the current batch in the execution context.
-   * @memberof DefaultQueryExecutionContext
+   *
    * @instance
    * @returns {Boolean} true if there is other elements to process in the DefaultQueryExecutionContext.
    */
@@ -116,12 +116,12 @@ export class DefaultQueryExecutionContext implements ExecutionContext {
 
   /**
    * Fetches the next batch of the feed and pass them as an array to a callback
-   * @memberof DefaultQueryExecutionContext
+   *
    * @instance
    */
   /**
    * Fetches the next batch of the feed and pass them as an array to a callback
-   * @memberof DefaultQueryExecutionContext
+   *
    * @instance
    */
   public async fetchMore(): Promise<Response<any>> {
