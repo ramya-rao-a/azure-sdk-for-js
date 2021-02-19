@@ -320,7 +320,7 @@ describe("Sender Tests", () => {
 
     function compareSequenceNumbers(sequenceNumber1: Long.Long, sequenceNumber2: Long.Long): void {
       should.equal(
-        sequenceNumber1.compare(sequenceNumber2) != 0,
+        sequenceNumber1.compare(sequenceNumber2) !== 0,
         true,
         "Returned sequence numbers for parallel requests are the same"
       );
@@ -333,7 +333,7 @@ describe("Sender Tests", () => {
         ({ sequenceNumber }) => sequenceNumber?.comp(seqNum) === 0
       );
       should.equal(
-        msgWithSeqNum == undefined,
+        msgWithSeqNum === undefined,
         false,
         `Sequence number ${seqNum} is not found in the received messages!`
       );

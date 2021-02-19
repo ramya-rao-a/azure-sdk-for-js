@@ -873,7 +873,7 @@ describe("Batching Receiver", () => {
     ): Promise<void> {
       serviceBusClient = createServiceBusClientForTests();
       const entityNames = await serviceBusClient.test.createTestEntities(noSessionTestClientType);
-      if (receiveMode == "receiveAndDelete") {
+      if (receiveMode === "receiveAndDelete") {
         receiver = await serviceBusClient.test.createReceiveAndDeleteReceiver(entityNames);
       } else {
         receiver = await serviceBusClient.test.createPeekLockReceiver(entityNames);

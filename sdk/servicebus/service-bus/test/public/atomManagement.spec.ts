@@ -744,9 +744,9 @@ describe("Atom management - Authentication", function(): void {
       const name = testCase.entityType === EntityType.SUBSCRIPTION ? "subscriptionName" : "name";
       const paramsToExclude = ["createdAt", "accessedAt", "modifiedAt"];
       for (const info of response) {
-        if (info[name] == testCase[1].alwaysBeExistingEntity) {
+        if (info[name] === testCase[1].alwaysBeExistingEntity) {
           assert.deepEqualExcluding(info, testCase[1].output, paramsToExclude);
-        } else if (info[name] == testCase[2].alwaysBeExistingEntity) {
+        } else if (info[name] === testCase[2].alwaysBeExistingEntity) {
           assert.deepEqualExcluding(info, testCase[2].output, paramsToExclude);
         }
       }
@@ -2421,7 +2421,7 @@ async function createEntity(
   ruleOptions?: Omit<Required<CreateSubscriptionOptions>["defaultRuleOptions"], "name">
 ): Promise<any> {
   if (!overrideOptions) {
-    if (queueOptions == undefined) {
+    if (queueOptions === undefined) {
       queueOptions = {
         lockDuration: "PT1M",
         authorizationRules: [
@@ -2436,19 +2436,19 @@ async function createEntity(
       };
     }
 
-    if (topicOptions == undefined) {
+    if (topicOptions === undefined) {
       topicOptions = {
         status: "Active"
       };
     }
 
-    if (subscriptionOptions == undefined) {
+    if (subscriptionOptions === undefined) {
       subscriptionOptions = {
         lockDuration: "PT1M"
       };
     }
 
-    if (ruleOptions == undefined) {
+    if (ruleOptions === undefined) {
       ruleOptions = {
         filter: {
           sqlExpression: "stringValue = @stringParam AND intValue = @intParam",
@@ -2650,7 +2650,7 @@ async function updateEntity(
   ruleOptions?: Omit<RuleProperties, "name">
 ): Promise<any> {
   if (!overrideOptions) {
-    if (queueOptions == undefined) {
+    if (queueOptions === undefined) {
       queueOptions = {
         lockDuration: "PT1M",
         authorizationRules: [
@@ -2665,19 +2665,19 @@ async function updateEntity(
       };
     }
 
-    if (topicOptions == undefined) {
+    if (topicOptions === undefined) {
       topicOptions = {
         status: "Active"
       };
     }
 
-    if (subscriptionOptions == undefined) {
+    if (subscriptionOptions === undefined) {
       subscriptionOptions = {
         lockDuration: "PT1M"
       };
     }
 
-    if (ruleOptions == undefined) {
+    if (ruleOptions === undefined) {
       ruleOptions = {
         filter: {
           sqlExpression: "stringValue = @stringParam AND intValue = @intParam",
