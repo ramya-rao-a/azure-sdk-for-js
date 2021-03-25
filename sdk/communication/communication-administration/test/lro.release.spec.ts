@@ -3,6 +3,7 @@
 
 import { isPlaybackMode, Recorder } from "@azure/test-utils-recorder";
 import { assert } from "chai";
+import { Context } from "mocha";
 import { PhoneNumberAdministrationClient, PhoneNumberRelease } from "../src";
 import {
   createRecordedPhoneNumberAdministrationClient,
@@ -15,7 +16,7 @@ describe("PhoneNumber - LROs - Release [Playback/Live]", function() {
   let includePhoneNumberLiveTests: boolean;
   let phoneNumberToRelease: string;
 
-  beforeEach(function() {
+  beforeEach(function(this: Context) {
     ({
       client,
       recorder,
@@ -23,13 +24,13 @@ describe("PhoneNumber - LROs - Release [Playback/Live]", function() {
     } = createRecordedPhoneNumberAdministrationClient(this));
   });
 
-  afterEach(async function() {
+  afterEach(async function(this: Context) {
     if (!this.currentTest?.isPending()) {
       await recorder.stop();
     }
   });
 
-  it("can get phone number to release", async function() {
+  it("can get phone number to release", async function(this: Context) {
     if (!includePhoneNumberLiveTests && !isPlaybackMode()) {
       this.skip();
     }
@@ -40,7 +41,7 @@ describe("PhoneNumber - LROs - Release [Playback/Live]", function() {
     assert.isNotEmpty(phoneNumberToRelease);
   });
 
-  it("can wait until a phone number is released", async function() {
+  it("can wait until a phone number is released", async function(this: Context) {
     if (!includePhoneNumberLiveTests && !isPlaybackMode()) {
       this.skip();
     }

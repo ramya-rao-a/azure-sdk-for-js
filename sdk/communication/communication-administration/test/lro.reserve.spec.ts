@@ -4,6 +4,7 @@
 import { PollerLike, PollOperationState } from "@azure/core-lro";
 import { isPlaybackMode, Recorder } from "@azure/test-utils-recorder";
 import { assert } from "chai";
+import { Context } from "mocha";
 import {
   CreateReservationRequest,
   ListPhonePlansRequest,
@@ -25,7 +26,7 @@ describe("PhoneNumber - LROs - Phone Number Reservations [Playback/Live]", funct
   const countryCode = "US";
   const phonePlanIds: string[] = [];
 
-  beforeEach(function() {
+  beforeEach(function(this: Context) {
     ({
       client,
       recorder,
@@ -33,13 +34,13 @@ describe("PhoneNumber - LROs - Phone Number Reservations [Playback/Live]", funct
     } = createRecordedPhoneNumberAdministrationClient(this));
   });
 
-  afterEach(async function() {
+  afterEach(async function(this: Context) {
     if (!this.currentTest?.isPending()) {
       await recorder.stop();
     }
   });
 
-  it("can get phonePlanIds and areaCode to create reservation", async function() {
+  it("can get phonePlanIds and areaCode to create reservation", async function(this: Context) {
     if (!includePhoneNumberLiveTests && !isPlaybackMode()) {
       this.skip();
     }
@@ -84,7 +85,7 @@ describe("PhoneNumber - LROs - Phone Number Reservations [Playback/Live]", funct
     areaCode = primaryAreaCodes ? primaryAreaCodes[0] : "";
   }).timeout(30000);
 
-  it("can wait until a search is completed", async function() {
+  it("can wait until a search is completed", async function(this: Context) {
     if (!includePhoneNumberLiveTests && !isPlaybackMode()) {
       this.skip();
     }
@@ -107,7 +108,7 @@ describe("PhoneNumber - LROs - Phone Number Reservations [Playback/Live]", funct
     assert.equal(reservation.phoneNumbers?.length, 1);
   }).timeout(30000);
 
-  it("can cancel a phone number reservation", async function() {
+  it("can cancel a phone number reservation", async function(this: Context) {
     if (!includePhoneNumberLiveTests && !isPlaybackMode()) {
       this.skip();
     }

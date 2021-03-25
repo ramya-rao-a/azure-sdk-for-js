@@ -5,17 +5,18 @@ import { assert } from "chai";
 import { Recorder } from "@azure/test-utils-recorder";
 import { ListPhonePlansRequest, PhoneNumberAdministrationClient } from "../src";
 import { createRecordedPhoneNumberAdministrationClient } from "./utils/recordedClient";
+import { Context } from "mocha";
 
 describe("PhoneNumberAdministrationClient Lists [Playback/Live]", function() {
   let recorder: Recorder;
   let client: PhoneNumberAdministrationClient;
   let planGroupIdToQuery: string;
 
-  beforeEach(function() {
+  beforeEach(function(this: Context) {
     ({ client, recorder } = createRecordedPhoneNumberAdministrationClient(this));
   });
 
-  afterEach(async function() {
+  afterEach(async function(this: Context) {
     if (!this.currentTest?.isPending()) {
       await recorder.stop();
     }

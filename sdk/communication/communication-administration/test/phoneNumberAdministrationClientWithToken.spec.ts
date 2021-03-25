@@ -3,6 +3,7 @@
 
 import { isPlaybackMode, Recorder } from "@azure/test-utils-recorder";
 import { assert } from "chai";
+import { Context } from "mocha";
 import { PhoneNumberAdministrationClient } from "../src";
 import { createRecordedPhoneNumberAdministrationClientWithToken } from "./utils/recordedClient";
 
@@ -14,7 +15,7 @@ describe("PhoneNumberAdministrationClientWithToken [Playback/Live]", function() 
   let shouldSkip = false;
   const countryCode = "US";
 
-  beforeEach(function() {
+  beforeEach(function(this: Context) {
     const recordedClient = createRecordedPhoneNumberAdministrationClientWithToken(this);
     if (!recordedClient) {
       shouldSkip = true;
@@ -25,13 +26,13 @@ describe("PhoneNumberAdministrationClientWithToken [Playback/Live]", function() 
     }
   });
 
-  afterEach(async function() {
+  afterEach(async function(this: Context) {
     if (!this.currentTest?.isPending()) {
       await recorder.stop();
     }
   });
 
-  it("successfully gets phonePlanGroupId", async function() {
+  it("successfully gets phonePlanGroupId", async function(this: Context) {
     if ((!includePhoneNumberLiveTests && !isPlaybackMode()) || shouldSkip) {
       this.skip();
     }

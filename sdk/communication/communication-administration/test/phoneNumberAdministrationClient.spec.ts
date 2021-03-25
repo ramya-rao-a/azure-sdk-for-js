@@ -5,6 +5,7 @@ import { assert } from "chai";
 import { isPlaybackMode, Recorder } from "@azure/test-utils-recorder";
 import { ListPhonePlansRequest, LocationOptions, PhoneNumberAdministrationClient } from "../src";
 import { createRecordedPhoneNumberAdministrationClient } from "./utils/recordedClient";
+import { Context } from "mocha";
 
 describe("PhoneNumberAdministrationClient [Playback/Live]", function() {
   let recorder: Recorder;
@@ -15,7 +16,7 @@ describe("PhoneNumberAdministrationClient [Playback/Live]", function() {
   let locationOptions: LocationOptions | undefined;
   const countryCode = "US";
 
-  beforeEach(function() {
+  beforeEach(function(this: Context) {
     ({
       client,
       recorder,
@@ -23,13 +24,13 @@ describe("PhoneNumberAdministrationClient [Playback/Live]", function() {
     } = createRecordedPhoneNumberAdministrationClient(this));
   });
 
-  afterEach(async function() {
+  afterEach(async function(this: Context) {
     if (!this.currentTest?.isPending()) {
       await recorder.stop();
     }
   });
 
-  it("can get phonePlanGroupId and phonePlanId for other tests", async function() {
+  it("can get phonePlanGroupId and phonePlanId for other tests", async function(this: Context) {
     if (!includePhoneNumberLiveTests && !isPlaybackMode()) {
       this.skip();
     }
@@ -54,7 +55,7 @@ describe("PhoneNumberAdministrationClient [Playback/Live]", function() {
     }
   }).timeout(5000);
 
-  it("can get location options", async function() {
+  it("can get location options", async function(this: Context) {
     if (!includePhoneNumberLiveTests && !isPlaybackMode()) {
       this.skip();
     }
@@ -70,7 +71,7 @@ describe("PhoneNumberAdministrationClient [Playback/Live]", function() {
     assert.isString(locationOptions?.labelName);
   });
 
-  it("can get area codes", async function() {
+  it("can get area codes", async function(this: Context) {
     if (!includePhoneNumberLiveTests && !isPlaybackMode()) {
       this.skip();
     }

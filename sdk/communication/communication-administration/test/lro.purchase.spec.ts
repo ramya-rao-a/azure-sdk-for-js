@@ -3,6 +3,7 @@
 
 import { isPlaybackMode, Recorder } from "@azure/test-utils-recorder";
 import { assert } from "chai";
+import { Context } from "mocha";
 import {
   CreateReservationRequest,
   ListPhonePlansRequest,
@@ -23,7 +24,7 @@ describe("PhoneNumber - LROs - Purchase Reservation [Playback/Live]", function()
   const countryCode = "US";
   const phonePlanIds: string[] = [];
 
-  beforeEach(function() {
+  beforeEach(function(this: Context) {
     ({
       client,
       recorder,
@@ -31,13 +32,13 @@ describe("PhoneNumber - LROs - Purchase Reservation [Playback/Live]", function()
     } = createRecordedPhoneNumberAdministrationClient(this));
   });
 
-  afterEach(async function() {
+  afterEach(async function(this: Context) {
     if (!this.currentTest?.isPending()) {
       await recorder.stop();
     }
   });
 
-  it("can get phonePlanIds and areaCode to create reservation", async function() {
+  it("can get phonePlanIds and areaCode to create reservation", async function(this: Context) {
     if (!includePhoneNumberLiveTests && !isPlaybackMode()) {
       this.skip();
     }
@@ -81,7 +82,7 @@ describe("PhoneNumber - LROs - Purchase Reservation [Playback/Live]", function()
     areaCode = primaryAreaCodes ? primaryAreaCodes[0] : "";
   });
 
-  it("can wait until a reservation is purchased", async function() {
+  it("can wait until a reservation is purchased", async function(this: Context) {
     if (!includePhoneNumberLiveTests && !isPlaybackMode()) {
       this.skip();
     }
